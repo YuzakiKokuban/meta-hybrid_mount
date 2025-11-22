@@ -52,7 +52,7 @@ fn grab_fd() -> i32 {
 }
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn send_unmountable<P>(target: P)
+fn send_unmountable<P>(target: P)
 where
     P: AsRef<Path>,
 {
@@ -81,7 +81,7 @@ where
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
-pub fn send_unmountable() {
+fn send_unmountable() {
     unimplemented!()
 }
 
