@@ -29,10 +29,6 @@ struct Cli {
     #[arg(short = 's', long = "mountsource")]
     mountsource: Option<String>,
 
-    /// Log file path
-    #[arg(short = 'l', long = "logfile")]
-    logfile: Option<PathBuf>,
-
     /// Enable verbose (debug) logging
     #[arg(short = 'v', long = "verbose")]
     verbose: bool,
@@ -102,13 +98,12 @@ fn main() -> Result<()> {
         cli.moduledir,
         cli.tempdir,
         cli.mountsource,
-        cli.logfile.clone(),
         cli.verbose,
         cli.partitions,
     );
 
     // 初始化日志
-    utils::init_logger(&config.logfile, config.verbose)?;
+    utils::init_logger(config.verbose)?;
 
     log::info!("Magic Mount Starting");
     log::info!("module dir      : {}", config.moduledir.display());
@@ -123,7 +118,6 @@ fn main() -> Result<()> {
     };
 
     log::info!("mount source    : {}", config.mountsource);
-    log::info!("log file        : {}", config.logfile.display());
     log::info!("verbose mode    : {}", config.verbose);
     if !config.partitions.is_empty() {
         log::info!("extra partitions: {:?}", config.partitions);
@@ -178,7 +172,6 @@ fn show_config(config: &Config) -> Result<()> {
             .unwrap_or_else(|| "(auto)".to_string())
     );
     println!("Mount Source  : {}", config.mountsource);
-    println!("Log File      : {}", config.logfile.display());
     println!("Verbose       : {}", config.verbose);
     println!("Partitions    : {:?}", config.partitions);
     Ok(())

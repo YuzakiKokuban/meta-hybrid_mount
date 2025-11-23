@@ -19,9 +19,6 @@ pub struct Config {
     #[serde(default = "default_mountsource")]
     pub mountsource: String,
 
-    #[serde(default = "default_logfile")]
-    pub logfile: PathBuf,
-
     #[serde(default)]
     pub verbose: bool,
 
@@ -37,17 +34,12 @@ fn default_mountsource() -> String {
     String::from("MaGIcMounT")
 }
 
-fn default_logfile() -> PathBuf {
-    PathBuf::from("/data/adb/magic_mount/mm.log")
-}
-
 impl Default for Config {
     fn default() -> Self {
         Self {
             moduledir: default_moduledir(),
             tempdir: None,
             mountsource: default_mountsource(),
-            logfile: default_logfile(),
             verbose: false,
             partitions: Vec::new(),
         }
@@ -89,7 +81,6 @@ impl Config {
         moduledir: Option<PathBuf>,
         tempdir: Option<PathBuf>,
         mountsource: Option<String>,
-        logfile: Option<PathBuf>,
         verbose: bool,
         partitions: Vec<String>,
     ) {
@@ -101,9 +92,6 @@ impl Config {
         }
         if let Some(source) = mountsource {
             self.mountsource = source;
-        }
-        if let Some(log) = logfile {
-            self.logfile = log;
         }
         if verbose {
             self.verbose = true;

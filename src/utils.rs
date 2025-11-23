@@ -1,13 +1,11 @@
 use std::{
-    fs::{OpenOptions, create_dir_all, read_to_string, remove_dir_all, remove_file, write},
+    fs::{create_dir_all, read_to_string, remove_dir_all, remove_file, write},
     path::{Path, PathBuf},
 };
 
 use anyhow::{Context, Result, bail};
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use extattr::{Flags as XattrFlags, lsetxattr};
-use log::LevelFilter;
-use simplelog::{Config, WriteLogger};
 
 const SELINUX_XATTR: &str = "security.selinux";
 
@@ -52,20 +50,15 @@ pub fn ensure_dir_exists<T: AsRef<Path>>(dir: T) -> Result<()> {
     }
 }
 
-pub fn init_logger(logfile: &Path, verbose: bool) -> Result<()> {
-    let level = if verbose && cfg!(debug_assertions) {
-        LevelFilter::Debug
+pub fn init_logger(verbose: bool) -> Result<()> {
+    let level = if verbose {
+        log::LevelFilter::Debug
     } else {
-        LevelFilter::Info
+        log::LevelFilter::Info
     };
 
-    let file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(logfile)
-        .with_context(|| format!("failed to open log file {logfile:?}"))?;
-
-    WriteLogger::init(level, Config::default(), file).context("failed to init file logger")?;
+    #[cfg(target_os = "android")]
+    android_logger::init_once(android_logger::Config::default().with_max_level(level));
 
     log::info!("log level: {:?}", level);
 

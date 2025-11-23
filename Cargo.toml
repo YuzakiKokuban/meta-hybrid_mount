@@ -8,7 +8,6 @@ anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 extattr = "1"
 log = "0.4"
-simplelog = "0.12"
 rustix = { version = "1.1", features = ["fs", "mount"] }
 libc = "0.2"
 serde = { version = "1.0", features = ["derive"] }
@@ -20,3 +19,6 @@ codegen-units = 1
 lto = "fat"
 opt-level = 3
 strip = true
+
+[target.aarch64-linux-android.dependencies]
+android_logger = "0.15.1"
