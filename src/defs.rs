@@ -8,7 +8,7 @@ pub const FALLBACK_CONTENT_DIR: &str = "/data/adb/meta-hybrid/mnt/";
 // The base directory for our own config and logs
 pub const BASE_DIR: &str = "/data/adb/meta-hybrid/";
 
-// [NEW] Runtime state directory (for communicating mount points to CLI)
+// Runtime state directory (for communicating mount points to CLI)
 pub const RUN_DIR: &str = "/data/adb/meta-hybrid/run/";
 pub const MOUNT_POINT_FILE: &str = "/data/adb/meta-hybrid/run/mount.point";
 
@@ -30,3 +30,6 @@ pub const SYSTEM_RW_DIR: &str = "/data/adb/meta-hybrid/rw";
 
 // LKM Paths
 pub const MODULE_LKM_DIR: &str = "/data/adb/modules/meta-hybrid/lkm/binaries";
+
+// Module Prop Path (for dynamic description updates)
+pub const MODULE_PROP_FILE: &str = "/data/adb/modules/meta-hybrid/module.prop";

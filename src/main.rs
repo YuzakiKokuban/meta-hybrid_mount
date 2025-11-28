@@ -89,6 +89,48 @@ fn read_prop(path: &Path, key: &str) -> Option<String> {
     None
 }
 
+// --- Dynamic Description Update (Catgirl Edition 🐱) ---
+fn update_module_prop(storage_mode: &str, nuke_active: bool, overlay_count: usize, magic_count: usize) {
+    let path = Path::new(defs::MODULE_PROP_FILE);
+    if !path.exists() { 
+        log::warn!("module.prop not found at {}, skipping description update", path.display());
+        return; 
+    }
+
+    // Catgirl Style Formatter
+    let mode_str = if storage_mode == "tmpfs" { "Tmpfs" } else { "Ext4" };
+    let status_emoji = if storage_mode == "tmpfs" { "🐾" } else { "💿" };
+    
+    let nuke_str = if nuke_active { " | Pads : ON ✨" } else { "" };
+    
+    // Construct the cute string
+    let new_desc = format!(
+        "description=Running～ Nya～ ({}) {} | Overlay: {} | Magic: {}{}", 
+        mode_str, status_emoji, overlay_count, magic_count, nuke_str
+    );
+
+    // Read and replace
+    let mut new_lines = Vec::new();
+    match fs::read_to_string(path) {
+        Ok(content) => {
+            for line in content.lines() {
+                if line.starts_with("description=") {
+                    new_lines.push(new_desc.clone());
+                } else {
+                    new_lines.push(line.to_string());
+                }
+            }
+            // Write back
+            if let Err(e) = fs::write(path, new_lines.join("\n")) {
+                log::error!("Failed to update module.prop: {}", e);
+            } else {
+                log::info!("Updated module.prop description (Meow!).");
+            }
+        },
+        Err(e) => log::error!("Failed to read module.prop: {}", e),
+    }
+}
+
 // --- Nuke Logic ---
 
 fn get_android_version() -> Option<String> {
@@ -99,35 +141,29 @@ fn get_android_version() -> Option<String> {
     String::from_utf8(output.stdout).ok().map(|s| s.trim().to_string())
 }
 
-// Attempts to find and load the correct nuke.ko for the current kernel
-fn try_load_nuke(mnt_point: &Path) {
+fn try_load_nuke(mnt_point: &Path) -> bool {
     log::info!("Attempting to load Nuke LKM for stealth...");
     
-    // 1. Get Kernel Version
     let uname = match utils::get_kernel_release() {
         Ok(v) => v,
         Err(e) => {
             log::error!("Failed to get kernel release: {}", e);
-            return;
+            return false;
         }
     };
     log::info!("Kernel release: {}", uname);
 
-    // 2. Scan LKM directory for matching module
     let lkm_dir = Path::new(defs::MODULE_LKM_DIR);
     if !lkm_dir.exists() {
         log::warn!("LKM directory not found at {}", lkm_dir.display());
-        return;
+        return false;
     }
 
     let android_ver = get_android_version().unwrap_or_default();
     let parts: Vec<&str> = uname.split('.').collect();
     
-    if parts.len() < 2 {
-        log::error!("Unknown kernel version format");
-        return;
-    }
-    let kernel_short = format!("{}.{}", parts[0], parts[1]); // e.g. "5.10"
+    if parts.len() < 2 { return false; }
+    let kernel_short = format!("{}.{}", parts[0], parts[1]); 
 
     let mut target_ko = None;
     let mut entries = Vec::new();
@@ -138,7 +174,6 @@ fn try_load_nuke(mnt_point: &Path) {
         }
     }
 
-    // Pass 1: Strict match
     if !android_ver.is_empty() {
         let pattern_android = format!("android{}", android_ver);
         for path in &entries {
@@ -151,7 +186,6 @@ fn try_load_nuke(mnt_point: &Path) {
         }
     }
 
-    // Pass 2: Loose match
     if target_ko.is_none() {
         for path in &entries {
             let name = path.file_name().unwrap().to_string_lossy();
@@ -167,12 +201,11 @@ fn try_load_nuke(mnt_point: &Path) {
         Some(p) => p,
         None => {
             log::warn!("No matching Nuke LKM found for kernel {} (Android {})", uname, android_ver);
-            return;
+            return false;
         }
     };
 
-    // 3. Find symbol address (ext4_unregister_sysfs)
-    // [FIX] Lower kptr_restrict to allow finding address
+    // Use KptrRestrict Guard
     let _kptr_guard = utils::ScopedKptrRestrict::new();
 
     let cmd = Command::new("sh")
@@ -182,22 +215,16 @@ fn try_load_nuke(mnt_point: &Path) {
         
     let sym_addr = match cmd {
         Ok(o) if o.status.success() => String::from_utf8(o.stdout).unwrap_or_default().trim().to_string(),
-        _ => {
-            log::error!("Failed to grep kallsyms.");
-            return;
-        }
+        _ => return false,
     };
 
     if sym_addr.is_empty() || sym_addr == "0x0000000000000000" {
-        log::warn!("Symbol ext4_unregister_sysfs not found or masked (addr={}).", sym_addr);
-        return;
+        log::warn!("Symbol ext4_unregister_sysfs not found or masked.");
+        return false;
     }
 
     log::info!("Symbol address: {}", sym_addr);
 
-    // 4. Load Module (insmod)
-    // Params: mount_point="/path" symaddr=0x...
-    log::info!("Executing insmod...");
     let status = Command::new("insmod")
         .arg(ko_path)
         .arg(format!("mount_point={}", mnt_point.display()))
@@ -206,15 +233,13 @@ fn try_load_nuke(mnt_point: &Path) {
 
     match status {
         Ok(s) => {
-            // [FIX] nuke.ko is designed to return -EAGAIN (exit code 1) upon success (self-unload).
-            // So we treat exit code 1 as success here if it's the specific LKM behavior.
-            if s.success() {
-                log::info!("Nuke LKM loaded successfully (Unexpected clean exit).");
-            } else {
-                log::info!("Nuke LKM executed (Exit code {}). This is expected for self-unloading modules.", s);
-            }
+            // Success or EAGAIN (self-unload) is considered success for Nuke
+            true
         },
-        Err(e) => log::error!("Failed to execute insmod: {}", e),
+        Err(e) => {
+            log::error!("Failed to execute insmod: {}", e);
+            false
+        },
     }
 }
 
@@ -281,16 +306,11 @@ fn format_size(bytes: u64) -> String {
     else { format!("{}B", bytes) }
 }
 
-// [FIX] Read from runtime state file to find actual mount point
 fn check_storage() -> Result<()> {
     let mut path = PathBuf::from(defs::FALLBACK_CONTENT_DIR);
-    
-    // Try reading state file
     if let Ok(state) = fs::read_to_string(defs::MOUNT_POINT_FILE) {
         let trimmed = state.trim();
-        if !trimmed.is_empty() {
-            path = PathBuf::from(trimmed);
-        }
+        if !trimmed.is_empty() { path = PathBuf::from(trimmed); }
     }
     
     if !path.exists() {
@@ -314,7 +334,6 @@ fn list_modules(cli: &Cli) -> Result<()> {
     let modules_dir = config.moduledir;
     let mut modules = Vec::new();
 
-    // Determine actual content base for checking
     let mut mnt_base = PathBuf::from(defs::FALLBACK_CONTENT_DIR);
     if let Ok(state) = fs::read_to_string(defs::MOUNT_POINT_FILE) {
         let trimmed = state.trim();
@@ -330,8 +349,6 @@ fn list_modules(cli: &Cli) -> Result<()> {
             if id == "meta-hybrid" || id == "lost+found" { continue; }
             if path.join(defs::DISABLE_FILE_NAME).exists() || path.join(defs::REMOVE_FILE_NAME).exists() || path.join(defs::SKIP_MOUNT_FILE_NAME).exists() { continue; }
 
-            // Check content (system/vendor/etc...)
-            // We check synced storage OR original module dir as fallback
             let has_content = BUILTIN_PARTITIONS.iter().any(|p| {
                 path.join(p).exists() || mnt_base.join(&id).join(p).exists()
             });
@@ -372,7 +389,6 @@ fn run() -> Result<()> {
     utils::init_logger(config.verbose, Path::new(defs::DAEMON_LOG_FILE))?;
     log::info!("Hybrid Mount Starting (True Hybrid Mode)...");
 
-    // Ensure Run Dir
     utils::ensure_dir_exists(defs::RUN_DIR)?;
 
     // 1. Stealth Mount Point
@@ -384,7 +400,6 @@ fn run() -> Result<()> {
         PathBuf::from(defs::FALLBACK_CONTENT_DIR)
     };
 
-    // [FIX] Save mount point for CLI tools
     if let Err(e) = fs::write(defs::MOUNT_POINT_FILE, mnt_base.to_string_lossy().as_bytes()) {
         log::error!("Failed to write mount state: {}", e);
     }
@@ -457,10 +472,17 @@ fn run() -> Result<()> {
         utils::cleanup_temp_dir(&tempdir);
     }
 
-    // Phase C: Nuke LKM (If ext4 used and enabled)
+    // Phase C: Nuke LKM
+    let mut nuke_active = false;
     if storage_mode == "ext4" && config.enable_nuke {
-        try_load_nuke(&mnt_base);
+        nuke_active = try_load_nuke(&mnt_base);
     }
+
+    // [NEW] Update module description with stats (Catgirl Mode)
+    let magic_count = magic_mount_modules.len();
+    let overlay_count = active_modules.len().saturating_sub(magic_count);
+    
+    update_module_prop(&storage_mode, nuke_active, overlay_count, magic_count);
 
     log::info!("Hybrid Mount Completed");
     Ok(())
