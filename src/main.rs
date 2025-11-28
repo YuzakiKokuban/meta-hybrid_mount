@@ -73,9 +73,14 @@ fn main() -> Result<()> {
 
     log::info!("mount source    : {}", config.mountsource);
     log::info!("verbose mode    : {}", config.verbose);
-    if !config.partitions.is_empty() {
-        log::info!("extra partitions: {:?}", config.partitions);
-    }
+    log::info!(
+        "extra partitions: {}",
+        if config.partitions.is_empty() {
+            "None".to_string()
+        } else {
+            format!("{:?}", config.partitions)
+        }
+    );
 
     utils::ensure_temp_dir(&tempdir)?;
 
