@@ -6,13 +6,28 @@
 
 .rule-card {
   background: var(--md-sys-color-surface-container-low);
-  padding: 16px;
   border-radius: 16px;
+  overflow: hidden;
+  transition: background-color 0.2s;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.rule-card:hover {
+  background: var(--md-sys-color-surface-container);
+}
+
+.rule-card.expanded {
+  background: var(--md-sys-color-surface-container);
+  border-color: var(--md-sys-color-outline-variant);
+}
+
+.rule-main {
+  padding: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  transition: background-color 0.2s;
 }
 
 .rule-info {
@@ -34,6 +49,26 @@
 }
 
 .module-id {
+  font-size: 12px;
+  color: var(--md-sys-color-outline);
+  font-family: var(--md-ref-typeface-mono);
+}
+
+.rule-details {
+  padding: 0 16px 16px 16px;
+  border-top: 1px solid var(--md-sys-color-surface-variant);
+  background-color: rgba(0,0,0,0.02);
+}
+
+.module-desc {
+  margin: 12px 0 8px 0;
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface-variant);
+  line-height: 1.5;
+}
+
+.module-meta {
+  margin: 0;
   font-size: 12px;
   color: var(--md-sys-color-outline);
   font-family: var(--md-ref-typeface-mono);

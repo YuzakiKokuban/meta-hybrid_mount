@@ -1,0 +1,130 @@
+.dashboard-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Storage Card Styles */
+.storage-card {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.storage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.storage-title {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.storage-value {
+  font-size: 32px;
+  font-weight: 400;
+  font-family: var(--md-ref-typeface-mono);
+}
+
+.storage-unit {
+  font-size: 16px;
+  opacity: 0.6;
+}
+
+.progress-track {
+  height: 8px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: var(--md-sys-color-primary);
+  border-radius: 4px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.storage-details {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  opacity: 0.7;
+  font-family: var(--md-ref-typeface-mono);
+}
+
+/* Stats Row */
+.stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.stat-card {
+  background-color: var(--md-sys-color-surface-container);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 500;
+  color: var(--md-sys-color-primary);
+  font-family: var(--md-ref-typeface-mono);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* Mode Distribution */
+.mode-card {
+  background-color: var(--md-sys-color-surface-container-low);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mode-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.mode-count {
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+}

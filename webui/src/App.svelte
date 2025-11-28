@@ -4,19 +4,22 @@
   import { cubicOut, cubicIn } from 'svelte/easing';
   import { store } from './lib/store.svelte';
   import NavBar from './components/NavBar.svelte';
+  import Toast from './components/Toast.svelte';
+  import StatusTab from './routes/StatusTab.svelte';
   import ConfigTab from './routes/ConfigTab.svelte';
   import ModulesTab from './routes/ModulesTab.svelte';
   import LogsTab from './routes/LogsTab.svelte';
   
   import './app.css';
-  import './layout.css'; // Renamed from App.css
-
-  let activeTab = $state('config');
+  import './layout.css';
+  
+  // Default tab is 'status'
+  let activeTab = $state('status');
   let transitionDirection = $state(1);
   let touchStartX = 0;
   let touchEndX = 0;
 
-  const TABS = ['config', 'modules', 'logs'];
+  const TABS = ['status', 'config', 'modules', 'logs'];
 
   function switchTab(id) {
     const currentIndex = TABS.indexOf(activeTab);
@@ -37,6 +40,7 @@
     const currentIndex = TABS.indexOf(activeTab);
     
     if (Math.abs(diff) < threshold) return;
+    
     if (diff > 0 && currentIndex < TABS.length - 1) {
       switchTab(TABS[currentIndex + 1]);
     } else if (diff < 0 && currentIndex > 0) {
@@ -58,7 +62,9 @@
            in:fly={{ x: 30 * transitionDirection, duration: 250, delay: 90, easing: cubicOut }} 
            out:fly={{ x: -30 * transitionDirection, duration: 150, easing: cubicIn }}>
         
-        {#if activeTab === 'config'}
+        {#if activeTab === 'status'}
+          <StatusTab />
+        {:else if activeTab === 'config'}
           <ConfigTab />
         {:else if activeTab === 'modules'}
           <ModulesTab />
@@ -69,7 +75,5 @@
     {/key}
   </main>
 
-  {#if store.toast.visible}
-    <div class="msg-toast">{store.toast.text}</div>
-  {/if}
+  <Toast />
 </div>

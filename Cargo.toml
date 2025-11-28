@@ -16,6 +16,7 @@ log = "0.4"
 rustix = { version = "0.38", features = ["fs", "mount", "process", "thread", "param"] }
 libc = "0.2"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 toml = "0.9"
 chrono = "0.4"
 procfs = "0.17"

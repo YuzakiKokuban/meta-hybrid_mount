@@ -8,9 +8,10 @@ export const store = $state({
   config: { ...DEFAULT_CONFIG },
   modules: [],
   logs: [],
+  storage: { used: '-', size: '-', percent: '0%' },
   
   // UI State
-  loading: { config: false, modules: false, logs: false },
+  loading: { config: false, modules: false, logs: false, status: false },
   saving: { config: false, modules: false },
   toast: { text: '', type: 'info', visible: false },
   
@@ -22,6 +23,16 @@ export const store = $state({
   // Getters
   get L() {
     return locate[this.lang] || locate['en'];
+  },
+
+  get modeStats() {
+    let auto = 0;
+    let magic = 0;
+    this.modules.forEach(m => {
+      if (m.mode === 'magic') magic++;
+      else auto++;
+    });
+    return { auto, magic };
   },
 
   // Actions
@@ -116,5 +127,20 @@ export const store = $state({
       this.logs = [{ text: this.L.logs.empty, type: 'debug' }];
     }
     this.loading.logs = false;
+  },
+
+  async loadStatus() {
+    this.loading.status = true;
+    // Load storage info and modules to calculate stats
+    try {
+      this.storage = await API.getStorageUsage();
+      // We also need module count for the dashboard
+      if (this.modules.length === 0) {
+        this.modules = await API.scanModules(this.config.moduledir);
+      }
+    } catch (e) {
+      // ignore
+    }
+    this.loading.status = false;
   }
 });

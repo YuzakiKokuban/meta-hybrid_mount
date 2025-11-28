@@ -165,24 +165,3 @@ button:active {
   pointer-events: auto;
   box-shadow: var(--md-sys-elevation-2);
 }
-
-/* Toast */
-.msg-toast {
-  position: fixed;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--md-sys-color-inverse-surface);
-  color: var(--md-sys-color-inverse-on-surface);
-  padding: 12px 24px;
-  border-radius: 24px;
-  font-size: 14px;
-  z-index: 200;
-  box-shadow: var(--md-sys-elevation-2);
-  animation: slideUp 0.3s cubic-bezier(0,0,0.2,1);
-}
-
-@keyframes slideUp {
-  from { transform: translate(-50%, 20px); opacity: 0; }
-  to { transform: translate(-50%, 0); opacity: 1; }
-}

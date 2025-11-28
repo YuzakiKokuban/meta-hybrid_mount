@@ -53,50 +53,19 @@ export const API = {
     if (errno !== 0) throw new Error('Failed to save config');
   },
 
-  scanModules: async (moduleDir) => {
-    const { stdout: modeOut } = await exec(`[ -f "${PATHS.MODE_CONFIG}" ] && cat "${PATHS.MODE_CONFIG}" || echo ""`);
-    const modeMap = new Map();
-    modeOut.split('\n').forEach(l => {
-      const [id, m] = l.split('=').map(s => s.trim());
-      if (id) modeMap.set(id, m);
-    });
-
-    const dir = moduleDir || DEFAULT_CONFIG.moduledir;
-    const imgDir = PATHS.IMAGE_MNT;
-    
-    const cmd = `
-      cd "${dir}" && for d in *;
-      do
-        if [ -d "$d" ] && [ ! -f "$d/disable" ] && [ ! -f "$d/skip_mount" ] && [ ! -f "$d/remove" ]; then
-           HAS_CONTENT=false
-           if [ -d "$d/system" ] || [ -d "$d/vendor" ] || [ -d "$d/product" ] || [ -d "$d/system_ext" ] || [ -d "$d/odm" ] || [ -d "$d/oem" ]; then
-             HAS_CONTENT=true
-           fi
-           if [ "$HAS_CONTENT" = "false" ]; then
-              if [ -d "${imgDir}/$d/system" ] || [ -d "${imgDir}/$d/vendor" ] || [ -d "${imgDir}/$d/product" ] || [ -d "${imgDir}/$d/system_ext" ] || [ -d "${imgDir}/$d/odm" ] || [ -d "${imgDir}/$d/oem" ]; then
-                HAS_CONTENT=true
-              fi
-           fi
-           if [ "$HAS_CONTENT" = "true" ]; then 
-              NAME=$(grep "^name=" "$d/module.prop" 2>/dev/null | head -n1 | cut -d= -f2-)
-              echo "$d|$NAME"
-           fi
-        fi
-      done
-    `;
-    
-    const { errno, stdout } = await exec(cmd);
-    if (errno !== 0) throw new Error('Scan failed');
-
-    return stdout.split('\n')
-      .map(s => s.trim())
-      .filter(s => s && !s.startsWith('meta-hybrid') && !s.startsWith('meta-overlayfs') && !s.startsWith('magic_mount'))
-      .map(line => {
-         const parts = line.split('|');
-         const id = parts[0];
-         const name = parts[1] || id; 
-         return { id, name, mode: modeMap.get(id) || 'auto' };
-      });
+  scanModules: async () => {
+    // Execute backend binary to get JSON list of modules
+    // Backend also handles mode config reading now!
+    const cmd = "/data/adb/modules/meta-hybrid/meta-hybrid modules";
+    try {
+      const { errno, stdout } = await exec(cmd);
+      if (errno === 0 && stdout) {
+        return JSON.parse(stdout);
+      }
+    } catch (e) {
+      console.error("Module scan failed:", e);
+    }
+    return [];
   },
 
   saveModules: async (modules) => {
@@ -112,6 +81,26 @@ export const API = {
     const { errno, stdout, stderr } = await exec(`[ -f "${f}" ] && cat "${f}" || echo ""`);
     if (errno === 0 && stdout) return stdout;
     throw new Error(stdout || stderr || "Log file empty or not found");
+  },
+
+  getStorageUsage: async () => {
+    try {
+      const cmd = "/data/adb/modules/meta-hybrid/meta-hybrid storage";
+      const { errno, stdout } = await exec(cmd);
+      
+      if (errno === 0 && stdout) {
+        const data = JSON.parse(stdout);
+        return {
+          size: data.size || '-',
+          used: data.used || '-',
+          avail: data.avail || '-', 
+          percent: data.percent || '0%'
+        };
+      }
+    } catch (e) {
+      console.error("Storage check failed:", e);
+    }
+    return { size: '-', used: '-', percent: '0%' };
   },
 
   fetchSystemColor: async () => {

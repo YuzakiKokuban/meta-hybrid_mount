@@ -1,3 +1,43 @@
+/* Container for the search bar and filter */
+.logs-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  background-color: var(--md-sys-color-surface-container);
+  border-radius: 12px;
+  padding: 8px 16px;
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.log-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  height: 32px;
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface);
+  outline: none;
+  min-width: 0;
+  font-family: var(--md-ref-typeface-plain);
+}
+
+.log-search-input::placeholder {
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: 0.7;
+}
+
+.log-filter-select {
+  background: transparent;
+  border: none;
+  color: var(--md-sys-color-primary);
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Main log view container */
 .log-container {
   background-color: #0d0d0d;
   border-radius: 8px;
@@ -6,10 +46,11 @@
   font-size: 12px;
   color: #c9d1d9;
   border: 1px solid var(--md-sys-color-outline-variant);
-  height: 60vh;
+  height: calc(60vh - 50px);
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-all;
+  scroll-behavior: smooth;
 }
 
 .log-entry {
@@ -18,6 +59,7 @@
   display: block;
 }
 
+/* Log Colors */
 .log-info { color: #58a6ff; }
 .log-warn { color: #d29922; }
 .log-debug { color: #3fc070; } 
