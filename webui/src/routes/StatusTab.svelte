@@ -34,7 +34,7 @@
       <div class="stat-label">{store.L.status.moduleActive}</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value" style="font-size: 16px;">{store.config.mountsource}</div>
+      <div class="stat-value">{store.config.mountsource}</div>
       <div class="stat-label">{store.L.config.mountSource}</div>
     </div>
   </div>
