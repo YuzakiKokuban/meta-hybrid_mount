@@ -17,7 +17,7 @@ export const PATHS = {
   MODE_CONFIG: '/data/adb/meta-hybrid/module_mode.conf',
   IMAGE_MNT: '/data/adb/meta-hybrid/mnt',
   BINARY: '/data/adb/modules/meta-hybrid/meta-hybrid',
-  MOUNT_POINT_STATE: '/data/adb/meta-hybrid/run/mount.point'
+  DAEMON_STATE: '/data/adb/meta-hybrid/run/daemon_state.json'
 };
 
 export const DEFAULT_SEED = '#6750A4';

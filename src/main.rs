@@ -6,6 +6,7 @@ mod modules;
 mod nuke;
 mod storage;
 mod utils;
+mod state; // Register new module
 
 #[path = "magic_mount/mod.rs"]
 mod magic_mount;
@@ -21,7 +22,9 @@ use mimalloc::MiMalloc;
 
 use cli::{Cli, Commands};
 use config::{Config, CONFIG_FILE_DEFAULT};
+use state::RuntimeState;
 
+// Set mimalloc as the global allocator for better performance
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
@@ -93,14 +96,11 @@ fn run() -> Result<()> {
     utils::ensure_dir_exists(defs::RUN_DIR)?;
 
     // 1. Static Mount Point Strategy
+    // Disabled dynamic decoy lookup to improve stability.
+    // Using standard internal path: /data/adb/meta-hybrid/mnt/
     let mnt_base = PathBuf::from(defs::FALLBACK_CONTENT_DIR);
     log::info!("Using fixed mount point at {}", mnt_base.display());
     utils::ensure_dir_exists(&mnt_base)?;
-
-    // Save mount point state for CLI tools
-    if let Err(e) = fs::write(defs::MOUNT_POINT_FILE, mnt_base.to_string_lossy().as_bytes()) {
-        log::error!("Failed to write mount state: {}", e);
-    }
 
     // Clean up previous mounts if necessary
     if mnt_base.exists() { let _ = unmount(&mnt_base, UnmountFlags::DETACH); }
@@ -108,11 +108,6 @@ fn run() -> Result<()> {
     // 2. Smart Storage Setup (Tmpfs vs Ext4)
     let img_path = Path::new(defs::BASE_DIR).join("modules.img");
     let storage_mode = storage::setup(&mnt_base, &img_path, config.force_ext4)?;
-    
-    // Persist storage mode state
-    if let Err(e) = fs::write(defs::STORAGE_MODE_FILE, &storage_mode) {
-        log::warn!("Failed to write storage mode state: {}", e);
-    }
     
     // 3. Populate Storage (Sync active modules)
     if let Err(e) = modules::sync_active(&config.moduledir, &mnt_base) {
@@ -159,6 +154,9 @@ fn run() -> Result<()> {
         }
     }
 
+    // Capture list of overlay modules for state
+    let mut overlay_module_ids: Vec<String> = Vec::new();
+
     // Phase A: OverlayFS
     for (part, modules) in &partition_overlay_map {
         let target_path = format!("/{}", part);
@@ -167,11 +165,29 @@ fn run() -> Result<()> {
         if let Err(e) = overlay_mount::mount_overlay(&target_path, &overlay_paths, None, None, config.disable_umount) {
             log::error!("OverlayFS mount failed for {}: {:#}. Fallback to Magic.", target_path, e);
             for m in modules { magic_mount_modules.insert(m.clone()); }
+        } else {
+            // If success, these modules are effectively overlay mounted
+            // We just need to track their IDs.
+            // Since `partition_overlay_map` is per-partition, a module might appear multiple times.
+            // We collect unique IDs later or here.
+            for m in modules {
+                if let Some(id) = m.file_name().map(|s| s.to_string_lossy().to_string()) {
+                    overlay_module_ids.push(id);
+                }
+            }
         }
     }
 
     // Capture magic count before execution
     let magic_count = magic_mount_modules.len();
+    let magic_module_ids: Vec<String> = magic_mount_modules.iter()
+        .filter_map(|p| p.file_name().map(|s| s.to_string_lossy().to_string()))
+        .collect();
+
+    // Deduplicate overlay list and remove those that fell back to magic
+    overlay_module_ids.sort();
+    overlay_module_ids.dedup();
+    overlay_module_ids.retain(|id| !magic_module_ids.contains(id));
 
     // Phase B: Magic Mount
     if !magic_mount_modules.is_empty() {
@@ -194,6 +210,18 @@ fn run() -> Result<()> {
     // Update module description with stats (Catgirl Mode 🐱)
     let overlay_count = active_modules.len().saturating_sub(magic_count);
     modules::update_description(&storage_mode, nuke_active, overlay_count, magic_count);
+
+    // [STATE] Save structured state
+    let state = RuntimeState::new(
+        storage_mode,
+        mnt_base,
+        overlay_module_ids,
+        magic_module_ids,
+        nuke_active
+    );
+    if let Err(e) = state.save() {
+        log::error!("Failed to save runtime state: {}", e);
+    }
 
     log::info!("Hybrid Mount Completed");
     Ok(())

@@ -8,11 +8,15 @@ pub const FALLBACK_CONTENT_DIR: &str = "/data/adb/meta-hybrid/mnt/";
 // The base directory for our own config and logs
 pub const BASE_DIR: &str = "/data/adb/meta-hybrid/";
 
-// Runtime state directory (for communicating mount points to CLI)
+// Runtime state directory
 pub const RUN_DIR: &str = "/data/adb/meta-hybrid/run/";
-pub const MOUNT_POINT_FILE: &str = "/data/adb/meta-hybrid/run/mount.point";
-// Persist the decided storage mode (tmpfs/ext4) for CLI queries
-pub const STORAGE_MODE_FILE: &str = "/data/adb/meta-hybrid/run/storage.mode";
+
+// [DEPRECATED] Old individual state files, kept here just in case but we are moving to JSON
+// pub const MOUNT_POINT_FILE: &str = "/data/adb/meta-hybrid/run/mount.point";
+// pub const STORAGE_MODE_FILE: &str = "/data/adb/meta-hybrid/run/storage.mode";
+
+// [NEW] Centralized structured state file
+pub const STATE_FILE: &str = "/data/adb/meta-hybrid/run/daemon_state.json";
 
 // Log file path (Must match WebUI)
 pub const DAEMON_LOG_FILE: &str = "/data/adb/meta-hybrid/daemon.log";

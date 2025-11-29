@@ -94,32 +94,43 @@ export const API = {
 
   getSystemInfo: async () => {
     try {
-      // Execute multiple checks in one shell command to save overhead
-      const cmd = `
-        echo "KERNEL:$(uname -r)"
-        echo "SELINUX:$(getenforce)"
-        echo "MOUNT:$(cat "${PATHS.MOUNT_POINT_STATE}" 2>/dev/null || echo "Unknown")"
-      `;
-      const { errno, stdout } = await exec(cmd);
+      // 1. Get static kernel/selinux info
+      const cmdSys = `echo "KERNEL:$(uname -r)"; echo "SELINUX:$(getenforce)"`;
+      const { errno: errSys, stdout: outSys } = await exec(cmdSys);
       
-      if (errno === 0 && stdout) {
-        const info = { kernel: '-', selinux: '-', mountBase: '-' };
-        stdout.split('\n').forEach(line => {
+      let info = { kernel: '-', selinux: '-', mountBase: '-' };
+      if (errSys === 0 && outSys) {
+        outSys.split('\n').forEach(line => {
           if (line.startsWith('KERNEL:')) info.kernel = line.substring(7).trim();
           else if (line.startsWith('SELINUX:')) info.selinux = line.substring(8).trim();
-          else if (line.startsWith('MOUNT:')) info.mountBase = line.substring(6).trim();
         });
-        return info;
       }
+
+      // 2. Read structured state JSON
+      const cmdState = `cat "${PATHS.DAEMON_STATE}"`;
+      const { errno: errState, stdout: outState } = await exec(cmdState);
+      
+      if (errState === 0 && outState) {
+        try {
+          const state = JSON.parse(outState);
+          info.mountBase = state.mount_point || 'Unknown';
+          // Potentially read other useful state here in the future
+        } catch (e) {
+          console.error("Failed to parse daemon state JSON", e);
+        }
+      }
+
+      return info;
     } catch (e) {
       console.error("System info check failed:", e);
+      return { kernel: 'Unknown', selinux: 'Unknown', mountBase: 'Unknown' };
     }
-    return { kernel: 'Unknown', selinux: 'Unknown', mountBase: 'Unknown' };
   },
 
   // Check active mounts filtered by mount source name
   getActiveMounts: async (sourceName) => {
     try {
+      // 'mount' command lists all mounts. We grep for our source name.
       const src = sourceName || DEFAULT_CONFIG.mountsource;
       const cmd = `mount | grep "${src}"`; 
       const { errno, stdout } = await exec(cmd);
@@ -127,6 +138,7 @@ export const API = {
       const mountedParts = [];
       if (errno === 0 && stdout) {
         stdout.split('\n').forEach(line => {
+          // Line format example: "KSU on /system type overlay ..."
           const parts = line.split(' ');
           if (parts.length >= 3 && parts[2].startsWith('/')) {
             const partName = parts[2].substring(1);

@@ -4,7 +4,7 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use anyhow::Result;
 use serde::Serialize;
-use crate::{config, defs, utils};
+use crate::{config, defs, utils, state};
 
 #[derive(Serialize)]
 struct ModuleInfo {
@@ -90,6 +90,7 @@ pub fn sync_active(source_dir: &Path, target_base: &Path) -> Result<()> {
     log::debug!("Found {} enabled modules to sync.", ids.len());
     
     // 1. Prune stale modules from storage (e.g. from modules.img)
+    // This fixes the issue where uninstalled/disabled modules persist in ext4 mode
     if target_base.exists() {
         for entry in fs::read_dir(target_base)? {
             let entry = entry?;
@@ -131,10 +132,12 @@ pub fn print_list(config: &config::Config) -> Result<()> {
     let modules_dir = &config.moduledir;
     let mut modules = Vec::new();
 
+    // Load from state file
+    let state = state::RuntimeState::load().unwrap_or_default();
+    
     let mut mnt_base = PathBuf::from(defs::FALLBACK_CONTENT_DIR);
-    if let Ok(state) = fs::read_to_string(defs::MOUNT_POINT_FILE) {
-        let trimmed = state.trim();
-        if !trimmed.is_empty() { mnt_base = PathBuf::from(trimmed); }
+    if !state.mount_point.as_os_str().is_empty() {
+        mnt_base = state.mount_point;
     }
 
     if modules_dir.exists() {

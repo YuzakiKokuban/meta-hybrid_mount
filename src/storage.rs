@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use rustix::mount::{unmount, UnmountFlags};
-use crate::{defs, utils};
+use crate::{defs, utils, state};
 
 pub fn setup(mnt_dir: &Path, image_path: &Path, force_ext4: bool) -> Result<String> {
     log::info!("Setting up storage at {}", mnt_dir.display());
@@ -48,21 +48,26 @@ fn format_size(bytes: u64) -> String {
 }
 
 pub fn print_status() -> Result<()> {
-    let mut path = PathBuf::from(defs::FALLBACK_CONTENT_DIR);
-    if let Ok(state) = fs::read_to_string(defs::MOUNT_POINT_FILE) {
-        let trimmed = state.trim();
-        if !trimmed.is_empty() { path = PathBuf::from(trimmed); }
-    }
+    // Load from centralized state file
+    let state = state::RuntimeState::load().unwrap_or_default();
+    
+    let path = if state.mount_point.as_os_str().is_empty() {
+        // Fallback if state is missing/empty
+        PathBuf::from(defs::FALLBACK_CONTENT_DIR)
+    } else {
+        state.mount_point
+    };
     
     if !path.exists() {
         println!("{{ \"error\": \"Not mounted\" }}");
         return Ok(());
     }
 
-    // Direct read from state file - The Single Source of Truth
-    let fs_type = fs::read_to_string(defs::STORAGE_MODE_FILE)
-        .map(|s| s.trim().to_string())
-        .unwrap_or_else(|_| "unknown".to_string());
+    let fs_type = if state.storage_mode.is_empty() {
+        "unknown".to_string()
+    } else {
+        state.storage_mode
+    };
 
     let stats = rustix::fs::statvfs(&path).context("statvfs failed")?;
     let block_size = stats.f_frsize as u64;
