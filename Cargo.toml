@@ -3,7 +3,7 @@ members = ["xbuild"]
 
 [package]
 name = "magic_mount_rs"
-version = "0.2.5"
+version = "0.2.6"
 edition = "2024"
 description = "An implementation of a metamodule using Magic Mount, Based on MKSU, Template is from meta-overlay."
 authors = ["7a72", "Tools-cx-app"]
