@@ -88,14 +88,10 @@ fn run() -> Result<()> {
 
     utils::ensure_dir_exists(defs::RUN_DIR)?;
 
-    // 1. Stealth Mount Point Strategy
-    let mnt_base = if let Some(decoy) = utils::find_decoy_mount_point() {
-        log::info!("Stealth Mode: Using decoy mount point at {}", decoy.display());
-        decoy
-    } else {
-        log::warn!("Stealth Mode: No decoy found, falling back to default.");
-        PathBuf::from(defs::FALLBACK_CONTENT_DIR)
-    };
+    // 1. Static Mount Point Strategy
+    let mnt_base = PathBuf::from(defs::FALLBACK_CONTENT_DIR);
+    log::info!("Using fixed mount point at {}", mnt_base.display());
+    utils::ensure_dir_exists(&mnt_base)?;
 
     // Save mount point state for CLI tools
     if let Err(e) = fs::write(defs::MOUNT_POINT_FILE, mnt_base.to_string_lossy().as_bytes()) {
@@ -126,6 +122,8 @@ fn run() -> Result<()> {
         for entry in entries.flatten() {
             if entry.path().is_dir() {
                 let name = entry.file_name().to_string_lossy().to_string();
+                // Filter out system directories like 'lost+found' (common in ext4)
+                // and our own directory to prevent miscounting modules
                 if name != "lost+found" && name != "meta-hybrid" {
                     active_modules.insert(name, entry.path());
                 }
