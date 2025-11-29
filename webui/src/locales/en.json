@@ -28,6 +28,7 @@
     "verboseOn": "On",
     "forceExt4": "Force Ext4 Mode",
     "enableNuke": "Enable Paw Pad (Stealth)",
+    "disableUmount": "Disable Namespace Detach",
     "moduleDir": "Module Directory",
     "tempDir": "Temp Directory",
     "mountSource": "Mount Source",

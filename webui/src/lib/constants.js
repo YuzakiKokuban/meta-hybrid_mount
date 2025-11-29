@@ -7,7 +7,8 @@ export const DEFAULT_CONFIG = {
   verbose: false,
   partitions: [],
   force_ext4: false,
-  enable_nuke: false
+  enable_nuke: false,
+  disable_umount: false
 };
 
 // File system paths

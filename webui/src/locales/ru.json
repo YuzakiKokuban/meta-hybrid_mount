@@ -28,6 +28,7 @@
     "verboseOn": "Вкл.",
     "forceExt4": "Принудительный Ext4",
     "enableNuke": "Включить Paw Pad (Скрытность)",
+    "disableUmount": "Отключить разделение пространств имен",
     "moduleDir": "Путь модулей",
     "tempDir": "Временная папка",
     "mountSource": "Источник монтирования",

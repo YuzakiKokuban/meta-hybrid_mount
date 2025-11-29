@@ -10,6 +10,7 @@ function serializeKvConfig(cfg) {
   lines.push(`verbose = ${cfg.verbose}`);
   lines.push(`force_ext4 = ${cfg.force_ext4}`);
   lines.push(`enable_nuke = ${cfg.enable_nuke}`);
+  lines.push(`disable_umount = ${cfg.disable_umount}`);
   if (cfg.partitions.length) lines.push(`partitions = ${q(cfg.partitions.join(','))}`);
   return lines.join('\n');
 }

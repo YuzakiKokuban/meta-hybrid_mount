@@ -82,6 +82,10 @@ fn run() -> Result<()> {
 
     log::info!("Hybrid Mount Starting (True Hybrid Mode)...");
 
+    if config.disable_umount {
+        log::warn!("Namespace Detach (try_umount) is DISABLED via config.");
+    }
+
     utils::ensure_dir_exists(defs::RUN_DIR)?;
 
     // 1. Stealth Mount Point Strategy
@@ -122,8 +126,6 @@ fn run() -> Result<()> {
         for entry in entries.flatten() {
             if entry.path().is_dir() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                // Filter out system directories like 'lost+found' (common in ext4)
-                // and our own directory to prevent miscounting modules
                 if name != "lost+found" && name != "meta-hybrid" {
                     active_modules.insert(name, entry.path());
                 }
@@ -160,7 +162,7 @@ fn run() -> Result<()> {
         let target_path = format!("/{}", part);
         let overlay_paths: Vec<String> = modules.iter().map(|m| m.join(part).display().to_string()).collect();
         log::info!("Mounting {} [OVERLAY] ({} layers)", target_path, overlay_paths.len());
-        if let Err(e) = overlay_mount::mount_overlay(&target_path, &overlay_paths, None, None) {
+        if let Err(e) = overlay_mount::mount_overlay(&target_path, &overlay_paths, None, None, config.disable_umount) {
             log::error!("OverlayFS mount failed for {}: {:#}. Fallback to Magic.", target_path, e);
             for m in modules { magic_mount_modules.insert(m.clone()); }
         }
@@ -175,7 +177,7 @@ fn run() -> Result<()> {
         log::info!("Starting Magic Mount Engine for {} modules...", magic_mount_modules.len());
         utils::ensure_temp_dir(&tempdir)?;
         let module_list: Vec<PathBuf> = magic_mount_modules.into_iter().collect();
-        if let Err(e) = magic_mount::mount_partitions(&tempdir, &module_list, &config.mountsource, &config.partitions) {
+        if let Err(e) = magic_mount::mount_partitions(&tempdir, &module_list, &config.mountsource, &config.partitions, config.disable_umount) {
             log::error!("Magic Mount failed: {:#}", e);
         }
         utils::cleanup_temp_dir(&tempdir);

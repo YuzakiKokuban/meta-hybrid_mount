@@ -3,7 +3,6 @@
   import { ICONS, DEFAULT_CONFIG } from '../lib/constants';
   
   import './ConfigTab.css';
-  
   let partitionInput = $state(store.config.partitions.join(', '));
 
   // Validation Helpers
@@ -11,7 +10,7 @@
   
   let invalidModuleDir = $derived(!isValidPath(store.config.moduledir));
   let invalidTempDir = $derived(store.config.tempdir && !isValidPath(store.config.tempdir));
-
+  
   function save() {
     if (invalidModuleDir || invalidTempDir) {
       store.showToast(store.L.config.invalidPath, "error");
@@ -47,6 +46,14 @@
     <span>{store.L.config.enableNuke}</span>
     <label class="md3-switch">
       <input type="checkbox" bind:checked={store.config.enable_nuke}>
+      <span class="track"><span class="thumb"></span></span>
+    </label>
+  </div>
+
+  <div class="switch-row">
+    <span>{store.L.config.disableUmount}</span>
+    <label class="md3-switch">
+      <input type="checkbox" bind:checked={store.config.disable_umount}>
       <span class="track"><span class="thumb"></span></span>
     </label>
   </div>

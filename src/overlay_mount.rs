@@ -18,6 +18,7 @@ pub fn mount_overlayfs(
     upperdir: Option<PathBuf>,
     workdir: Option<PathBuf>,
     dest: impl AsRef<Path>,
+    disable_umount: bool,
 ) -> Result<()> {
     let lowerdir_config = lower_dirs
         .iter()
@@ -76,12 +77,14 @@ pub fn mount_overlayfs(
     }
     
     // Apply try_umount logic to overlay mounts as well
-    let _ = send_unmountable(dest.as_ref());
+    if !disable_umount {
+        let _ = send_unmountable(dest.as_ref());
+    }
     
     Ok(())
 }
 
-pub fn bind_mount(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<()> {
+pub fn bind_mount(from: impl AsRef<Path>, to: impl AsRef<Path>, disable_umount: bool) -> Result<()> {
     info!(
         "bind mount {} -> {}",
         from.as_ref().display(),
@@ -103,7 +106,9 @@ pub fn bind_mount(from: impl AsRef<Path>, to: impl AsRef<Path>) -> Result<()> {
     )?;
     
     // Apply try_umount logic to bind mounts
-    let _ = send_unmountable(to.as_ref());
+    if !disable_umount {
+        let _ = send_unmountable(to.as_ref());
+    }
     
     Ok(())
 }
@@ -113,12 +118,13 @@ fn mount_overlay_child(
     relative: &String,
     module_roots: &Vec<String>,
     stock_root: &String,
+    disable_umount: bool,
 ) -> Result<()> {
     if !module_roots
         .iter()
         .any(|lower| Path::new(&format!("{lower}{relative}")).exists())
     {
-        return bind_mount(stock_root, mount_point);
+        return bind_mount(stock_root, mount_point, disable_umount);
     }
     if !Path::new(&stock_root).is_dir() {
         return Ok(());
@@ -138,9 +144,9 @@ fn mount_overlay_child(
         return Ok(());
     }
     // merge modules and stock
-    if let Err(e) = mount_overlayfs(&lower_dirs, stock_root, None, None, mount_point) {
+    if let Err(e) = mount_overlayfs(&lower_dirs, stock_root, None, None, mount_point, disable_umount) {
         warn!("failed: {e:#}, fallback to bind mount");
-        bind_mount(stock_root, mount_point)?;
+        bind_mount(stock_root, mount_point, disable_umount)?;
     }
     Ok(())
 }
@@ -150,6 +156,7 @@ pub fn mount_overlay(
     module_roots: &Vec<String>,
     workdir: Option<PathBuf>,
     upperdir: Option<PathBuf>,
+    disable_umount: bool,
 ) -> Result<()> {
     info!("mount overlay for {root}");
     std::env::set_current_dir(root).with_context(|| format!("failed to chdir to {root}"))?;
@@ -170,7 +177,7 @@ pub fn mount_overlay(
     mount_seq.sort();
     mount_seq.dedup();
 
-    mount_overlayfs(module_roots, root, upperdir, workdir, root)
+    mount_overlayfs(module_roots, root, upperdir, workdir, root, disable_umount)
         .with_context(|| "mount overlayfs for root failed")?;
     for mount_point in mount_seq.iter() {
         let Some(mount_point) = mount_point else {
@@ -181,7 +188,7 @@ pub fn mount_overlay(
         if !Path::new(&stock_root).exists() {
             continue;
         }
-        if let Err(e) = mount_overlay_child(mount_point, &relative, module_roots, &stock_root) {
+        if let Err(e) = mount_overlay_child(mount_point, &relative, module_roots, &stock_root, disable_umount) {
             warn!("failed to mount overlay for child {mount_point}: {e:#}, revert");
             umount_dir(root).with_context(|| format!("failed to revert {root}"))?;
             bail!(e);
@@ -193,155 +200,5 @@ pub fn mount_overlay(
 pub fn umount_dir(src: impl AsRef<Path>) -> Result<()> {
     unmount(src.as_ref(), UnmountFlags::empty())
         .with_context(|| format!("Failed to umount {}", src.as_ref().display()))?;
-    Ok(())
-}
-
-// ========== Mount coordination logic (from init_event.rs) ==========
-
-#[allow(dead_code)]
-fn mount_partition(partition_name: &str, lowerdir: &Vec<String>) -> Result<()> {
-    if lowerdir.is_empty() {
-        warn!("partition: {partition_name} lowerdir is empty");
-        return Ok(());
-    }
-
-    let partition = format!("/{partition_name}");
-
-    // if /partition is a symlink and linked to /system/partition, then we don't need to overlay it separately
-    if Path::new(&partition).read_link().is_ok() {
-        warn!("partition: {partition} is a symlink");
-        return Ok(());
-    }
-
-    let mut workdir = None;
-    let mut upperdir = None;
-    let system_rw_dir = Path::new(SYSTEM_RW_DIR);
-    if system_rw_dir.exists() {
-        workdir = Some(system_rw_dir.join(partition_name).join("workdir"));
-        upperdir = Some(system_rw_dir.join(partition_name).join("upperdir"));
-    }
-
-    mount_overlay(&partition, lowerdir, workdir, upperdir)
-}
-
-/// Collect enabled module IDs from metadata directory
-///
-/// Reads module list and status from metadata directory, returns enabled module IDs
-#[allow(dead_code)]
-fn collect_enabled_modules(metadata_dir: &str) -> Result<Vec<String>> {
-    let dir = std::fs::read_dir(metadata_dir)
-        .with_context(|| format!("Failed to read metadata directory: {}", metadata_dir))?;
-
-    let mut enabled = Vec::new();
-
-    for entry in dir.flatten() {
-        let path = entry.path();
-        if !path.is_dir() {
-            continue;
-        }
-
-        let module_id = match entry.file_name().to_str() {
-            Some(id) => id.to_string(),
-            None => continue,
-        };
-
-        // Check status markers
-        if path.join(DISABLE_FILE_NAME).exists() {
-            info!("Module {} is disabled, skipping", module_id);
-            continue;
-        }
-
-        if path.join(SKIP_MOUNT_FILE_NAME).exists() {
-            info!("Module {} has skip_mount, skipping", module_id);
-            continue;
-        }
-
-        // Optional: verify module.prop exists
-        if !path.join("module.prop").exists() {
-            warn!("Module {} has no module.prop, skipping", module_id);
-            continue;
-        }
-
-        info!("Module {} enabled", module_id);
-        enabled.push(module_id);
-    }
-
-    Ok(enabled)
-}
-
-/// Dual-directory version of mount_modules_systemlessly
-///
-/// Parameters:
-/// - metadata_dir: Metadata directory, stores module.prop, disable, skip_mount, etc.
-/// - content_dir: Content directory, stores system/, vendor/ and other partition content (ext4 image mount point)
-#[allow(dead_code)]
-pub fn mount_modules_systemlessly(metadata_dir: &str, content_dir: &str) -> Result<()> {
-    info!("Scanning modules (dual-directory mode)");
-    info!("  Metadata: {}", metadata_dir);
-    info!("  Content: {}", content_dir);
-
-    // 1. Traverse metadata directory, collect enabled module IDs
-    let enabled_modules = collect_enabled_modules(metadata_dir)?;
-
-    if enabled_modules.is_empty() {
-        info!("No enabled modules found");
-        return Ok(());
-    }
-
-    info!("Found {} enabled module(s)", enabled_modules.len());
-
-    // 2. Initialize partition lowerdir lists
-    let partition = vec!["vendor", "product", "system_ext", "odm", "oem"];
-    let mut system_lowerdir: Vec<String> = Vec::new();
-    let mut partition_lowerdir: HashMap<String, Vec<String>> = HashMap::new();
-
-    for part in &partition {
-        partition_lowerdir.insert((*part).to_string(), Vec::new());
-    }
-
-    // 3. Read module content from content directory
-    for module_id in &enabled_modules {
-        let module_content_path = Path::new(content_dir).join(module_id);
-
-        if !module_content_path.exists() {
-            warn!("Module {} has no content directory, skipping", module_id);
-            continue;
-        }
-
-        info!("Processing module: {}", module_id);
-
-        // Collect system partition
-        let system_path = module_content_path.join("system");
-        if system_path.is_dir() {
-            system_lowerdir.push(system_path.display().to_string());
-            info!("  + system/");
-        }
-
-        // Collect other partitions
-        for part in &partition {
-            let part_path = module_content_path.join(part);
-            if part_path.is_dir() {
-                if let Some(v) = partition_lowerdir.get_mut(*part) {
-                    v.push(part_path.display().to_string());
-                    info!("  + {}/", part);
-                }
-            }
-        }
-    }
-
-    // 4. Mount partitions
-    info!("Mounting partitions...");
-
-    if let Err(e) = mount_partition("system", &system_lowerdir) {
-        warn!("mount system failed: {e:#}");
-    }
-
-    for (k, v) in partition_lowerdir {
-        if let Err(e) = mount_partition(&k, &v) {
-            warn!("mount {k} failed: {e:#}");
-        }
-    }
-
-    info!("All partitions processed");
     Ok(())
 }

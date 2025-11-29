@@ -153,6 +153,7 @@ fn do_magic_mount<P: AsRef<Path>, WP: AsRef<Path>>(
     work_dir_path: WP,
     current: Node,
     has_tmpfs: bool,
+    disable_umount: bool,
 ) -> Result<()> {
     let mut current = current;
     let path = path.as_ref().join(&current.name);
@@ -168,7 +169,9 @@ fn do_magic_mount<P: AsRef<Path>, WP: AsRef<Path>>(
             };
             if let Some(module_path) = &current.module_path {
                 mount_bind(module_path, target_path)?;
-                let _ = send_unmountable(target_path);
+                if !disable_umount {
+                    let _ = send_unmountable(target_path);
+                }
                 let _ = mount_remount(target_path, MountFlags::RDONLY | MountFlags::BIND, "");
             }
         }
@@ -232,7 +235,7 @@ fn do_magic_mount<P: AsRef<Path>, WP: AsRef<Path>>(
                     let name = entry.file_name().to_string_lossy().to_string();
                     if let Some(node) = current.children.remove(&name) {
                         if !node.skip {
-                            do_magic_mount(&path, &work_dir_path, node, has_tmpfs)?;
+                            do_magic_mount(&path, &work_dir_path, node, has_tmpfs, disable_umount)?;
                         }
                     } else if has_tmpfs {
                         mount_mirror(&path, &work_dir_path, &entry)?;
@@ -242,7 +245,7 @@ fn do_magic_mount<P: AsRef<Path>, WP: AsRef<Path>>(
 
             for (_, node) in current.children {
                 if !node.skip {
-                    do_magic_mount(&path, &work_dir_path, node, has_tmpfs)?;
+                    do_magic_mount(&path, &work_dir_path, node, has_tmpfs, disable_umount)?;
                 }
             }
 
@@ -250,7 +253,9 @@ fn do_magic_mount<P: AsRef<Path>, WP: AsRef<Path>>(
                 let _ = mount_remount(&work_dir_path, MountFlags::RDONLY | MountFlags::BIND, "");
                 mount_move(&work_dir_path, &path)?;
                 let _ = mount_change(&path, MountPropagationFlags::PRIVATE);
-                let _ = send_unmountable(&path);
+                if !disable_umount {
+                    let _ = send_unmountable(&path);
+                }
             }
         }
         NodeFileType::Whiteout => {}
@@ -264,6 +269,7 @@ pub fn mount_partitions(
     module_paths: &[PathBuf],
     mount_source: &str,
     extra_partitions: &[String],
+    disable_umount: bool,
 ) -> Result<()> {
     if let Some(root) = collect_module_files(module_paths, extra_partitions)? {
         log::debug!("Magic Mount Root: {}", root);
@@ -274,7 +280,7 @@ pub fn mount_partitions(
         mount(mount_source, &tmp_dir, "tmpfs", MountFlags::empty(), "").context("mount tmp")?;
         mount_change(&tmp_dir, MountPropagationFlags::PRIVATE).context("make tmp private")?;
 
-        let result = do_magic_mount("/", &tmp_dir, root, false);
+        let result = do_magic_mount("/", &tmp_dir, root, false, disable_umount);
 
         if let Err(e) = unmount(&tmp_dir, UnmountFlags::DETACH) {
             log::error!("failed to unmount tmp {}", e);

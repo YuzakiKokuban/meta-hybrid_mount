@@ -28,6 +28,7 @@
     "verboseOn": "开启",
     "forceExt4": "强制 Ext4 模式",
     "enableNuke": "启用肉垫 (隐蔽模式)",
+    "disableUmount": "禁用Umount",
     "moduleDir": "模块路径",
     "tempDir": "临时路径",
     "mountSource": "挂载源名",

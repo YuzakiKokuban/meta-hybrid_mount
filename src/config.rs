@@ -30,6 +30,11 @@ pub struct Config {
     // If true, attempts to load the Nuke LKM to hide ext4 traces.
     #[serde(default)]
     pub enable_nuke: bool,
+
+    // If true, skips the try_umount logic (namespace detaching).
+    // Useful for debugging or if the kernel doesn't support it well.
+    #[serde(default)]
+    pub disable_umount: bool,
 }
 
 fn default_moduledir() -> PathBuf {
@@ -71,6 +76,7 @@ impl Default for Config {
             partitions: Vec::new(),
             force_ext4: false,
             enable_nuke: false,
+            disable_umount: false,
         }
     }
 }
