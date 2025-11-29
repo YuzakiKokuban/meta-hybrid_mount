@@ -8,7 +8,6 @@ edition = "2024"
 description = "An implementation of a metamodule using Magic Mount, Based on MKSU, Template is from meta-overlay."
 authors = ["7a72", "Tools-cx-app"]
 license = "GPL-3.0"
-repository = "https://github.com/shadow3aaa/fas-rs"
 
 [dependencies]
 anyhow = "1"
