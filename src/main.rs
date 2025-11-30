@@ -4,6 +4,7 @@ mod core;
 mod defs;
 mod mount;
 mod utils;
+
 use std::path::{Path, PathBuf};
 use anyhow::Result;
 use clap::Parser;
@@ -145,13 +146,14 @@ fn run() -> Result<()> {
         exec_result.magic_module_ids.len()
     );
 
-    // [STATE] Save structured state
+    // Save structured state
     // We save the ACTUAL mounted modules, not just the planned ones
     let state = RuntimeState::new(
         storage_mode,
         mnt_base,
         exec_result.overlay_module_ids,
         exec_result.magic_module_ids,
+        plan.conflicts,
         nuke_active
     );
     if let Err(e) = state.save() {

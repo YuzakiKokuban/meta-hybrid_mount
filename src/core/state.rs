@@ -1,10 +1,11 @@
-// meta-hybrid_mount/src/state.rs
+// meta-hybrid_mount/src/core/state.rs
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use crate::defs;
+use crate::core::planner::FileConflict;
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct RuntimeState {
@@ -14,6 +15,7 @@ pub struct RuntimeState {
     pub mount_point: PathBuf,
     pub overlay_modules: Vec<String>,
     pub magic_modules: Vec<String>,
+    pub conflicts: Vec<FileConflict>,
     pub nuke_active: bool,
 }
 
@@ -23,6 +25,7 @@ impl RuntimeState {
         mount_point: PathBuf, 
         overlay_modules: Vec<String>, 
         magic_modules: Vec<String>,
+        conflicts: Vec<FileConflict>,
         nuke_active: bool
     ) -> Self {
         let start = SystemTime::now();
@@ -36,6 +39,7 @@ impl RuntimeState {
             mount_point,
             overlay_modules,
             magic_modules,
+            conflicts,
             nuke_active,
         }
     }
