@@ -17,7 +17,10 @@ pub struct ModuleInfo {
     pub skip: bool,
 }
 
-fn read_prop<P: AsRef<Path>>(path: P, key: &str) -> Option<String> {
+fn read_prop<P>(path: P, key: &str) -> Option<String>
+where
+    P: AsRef<Path>,
+{
     let file = File::open(path).ok()?;
     let reader = BufReader::new(file);
 
