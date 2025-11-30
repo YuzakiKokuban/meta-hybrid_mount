@@ -15,12 +15,17 @@ mod scanner;
 mod utils;
 
 use std::io::Write;
+use std::path::Path;
 
 use anyhow::{Context, Result};
 use env_logger::Builder;
 use mimalloc::MiMalloc;
 
-use crate::{config::Config, defs::CONFIG_FILE_DEFAULT, magic_mount::UMOUNT};
+use crate::{
+    config::Config,
+    defs::CONFIG_FILE_DEFAULT,
+    magic_mount::UMOUNT,
+};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -59,26 +64,42 @@ fn init_logger(verbose: bool) {
 }
 
 fn main() -> Result<()> {
+    
     let config = load_config();
 
     let args: Vec<_> = std::env::args().collect();
 
-    if args.len() > 1 && args[1] == "scan" {
-        let json_output = args.len() > 2 && args[2] == "--json";
+    if args.len() > 1 {
+        match args[1].as_str() {
+            "scan" => {
+                let json_output = args.len() > 2 && args[2] == "--json";
+                
+                let modules = scanner::scan_modules(&config.moduledir)?;
 
-        let modules = scanner::scan_modules(&config.moduledir);
-
-        if json_output {
-            let json = serde_json::to_string(&modules)?;
-            println!("{json}");
-        } else {
-            for module in modules {
-                if !module.disabled && !module.skip {
-                    println!("{}", module.id);
+                if json_output {
+                    let json = serde_json::to_string(&modules)?;
+                    println!("{json}");
+                } else {
+                    for module in modules {
+                        println!("{}", module.id);
+                    }
                 }
-            }
+                return Ok(());
+            },
+            "storage" => {
+                let check_path = Path::new("/data/adb");
+                let storage = scanner::get_storage_usage(check_path)
+                    .unwrap_or(scanner::StorageInfo {
+                        size: "-".to_string(),
+                        used: "-".to_string(),
+                        percent: "0%".to_string(),
+                    });
+                let json = serde_json::to_string(&storage)?;
+                println!("{json}");
+                return Ok(());
+            },
+            _ => {}
         }
-        return Ok(());
     }
 
     init_logger(config.verbose);

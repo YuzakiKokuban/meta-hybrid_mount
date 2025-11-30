@@ -127,7 +127,8 @@ EOF_CONFIG
             version: m.version,
             description: m.description,
             disabledByFlag: m.disabled,
-            skipMount: m.skip
+            skipMount: m.skip,
+            mode: 'magic'
           }));
         } catch (parseError) {
           console.error("Failed to parse module JSON:", parseError);
@@ -150,18 +151,17 @@ EOF_CONFIG
   },
 
   getStorageUsage: async () => {
+    const cmd = `/data/adb/modules/magic_mount_rs/meta-mm storage`;
     try {
-      const { errno, stdout } = await exec(`df -h /data/adb | tail -n 1`);
+      const { errno, stdout, stderr } = await exec(cmd);
       if (errno === 0 && stdout) {
-        const parts = stdout.trim().split(/\s+/);
-        if (parts.length >= 5) {
-            return {
-                size: parts[1],
-                used: parts[2],
-                percent: parts[4],
-                type: 'ext4'
-            };
+        try {
+          return JSON.parse(stdout);
+        } catch (e) {
+          console.error("JSON parse error for storage:", e);
         }
+      } else {
+        console.error("Storage command failed:", stderr);
       }
     } catch (e) {
       console.error("Storage check failed:", e);
