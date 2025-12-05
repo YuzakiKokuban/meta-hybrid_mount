@@ -1,7 +1,5 @@
 <script>
   import { onMount } from 'svelte';
-  import { fly } from 'svelte/transition';
-  import { cubicOut, cubicIn } from 'svelte/easing';
   import { store } from './lib/store.svelte';
   import NavBar from './components/NavBar.svelte';
   import Toast from './components/Toast.svelte';
@@ -14,73 +12,127 @@
   import './layout.css';
   
   let activeTab = $state('status');
-  let transitionDirection = $state(1);
+  let dragOffset = $state(0);
+  let isDragging = $state(false);
+  let containerWidth = $state(0);
+
   let touchStartX = 0;
   let touchStartY = 0;
 
   const TABS = ['status', 'config', 'modules', 'logs', 'info'];
 
   function switchTab(id) {
-    const currentIndex = TABS.indexOf(activeTab);
-    const newIndex = TABS.indexOf(id);
-    if (currentIndex === newIndex) return;
-    transitionDirection = newIndex > currentIndex ? 1 : -1;
     activeTab = id;
   }
 
   function handleTouchStart(e) {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
+    isDragging = true;
+    dragOffset = 0;
   }
 
-  function handleTouchEnd(e) {
-    const touchEndX = e.changedTouches[0].screenX;
-    const touchEndY = e.changedTouches[0].screenY;
-    const threshold = 60;
-    
-    const diffX = touchStartX - touchEndX;
-    const diffY = touchStartY - touchEndY;
+  function handleTouchMove(e) {
+    if (!isDragging) return;
 
-    if (Math.abs(diffY) > Math.abs(diffX)) return;
-    if (Math.abs(diffX) < threshold) return;
+    const currentX = e.changedTouches[0].screenX;
+    const currentY = e.changedTouches[0].screenY;
+    let diffX = currentX - touchStartX;
+    const diffY = currentY - touchStartY;
+
+    if (Math.abs(diffY) > Math.abs(diffX)) {
+      return;
+    }
+
+    if (e.cancelable) e.preventDefault();
 
     const currentIndex = TABS.indexOf(activeTab);
-    
-    if (diffX > 0 && currentIndex < TABS.length - 1) {
-      switchTab(TABS[currentIndex + 1]);
-    } else if (diffX < 0 && currentIndex > 0) {
-      switchTab(TABS[currentIndex - 1]);
+
+    if ((currentIndex === 0 && diffX > 0) || (currentIndex === TABS.length - 1 && diffX < 0)) {
+      diffX = diffX / 3;
     }
+
+    dragOffset = diffX;
+  }
+
+  function handleTouchEnd() {
+    if (!isDragging) return;
+    isDragging = false;
+
+    const threshold = containerWidth * 0.25 || 60;
+    const currentIndex = TABS.indexOf(activeTab);
+    let nextIndex = currentIndex;
+
+    if (dragOffset < -threshold && currentIndex < TABS.length - 1) {
+      nextIndex = currentIndex + 1;
+    } else if (dragOffset > threshold && currentIndex > 0) {
+      nextIndex = currentIndex - 1;
+    }
+
+    if (nextIndex !== currentIndex) {
+      switchTab(TABS[nextIndex]);
+    }
+
+    dragOffset = 0;
   }
 
   onMount(() => {
     store.init();
   });
+
+  let baseTranslateX = $derived(TABS.indexOf(activeTab) * -20);
 </script>
 
 <div class="app-root">
   <NavBar {activeTab} onTabChange={switchTab} />
 
-  <main class="main-content" ontouchstart={handleTouchStart} ontouchend={handleTouchEnd}>
-    {#key activeTab}
-      <div class="tab-pane" 
-           in:fly={{ x: 30 * transitionDirection, duration: 250, delay: 90, easing: cubicOut }} 
-           out:fly={{ x: -30 * transitionDirection, duration: 150, easing: cubicIn }}>
-        
-        {#if activeTab === 'status'}
-          <StatusTab />
-        {:else if activeTab === 'config'}
-          <ConfigTab />
-        {:else if activeTab === 'modules'}
-          <ModulesTab />
-        {:else if activeTab === 'logs'}
-          <LogsTab />
-        {:else if activeTab === 'info'}
-          <InfoTab />
-        {/if}
-      </div>
-    {/key}
+  <main class="main-content" 
+        bind:clientWidth={containerWidth}
+        ontouchstart={handleTouchStart} 
+        ontouchmove={handleTouchMove}
+        ontouchend={handleTouchEnd}
+        ontouchcancel={handleTouchEnd}>
+    
+    <div class="swipe-track"
+         style:transform={`translateX(calc(${baseTranslateX}% + ${dragOffset}px))`}
+         style:transition={isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.25, 0.8, 0.5, 1)'}>
+      
+      <div class="swipe-page"><div class="tab-pane"><StatusTab /></div></div>
+      <div class="swipe-page"><div class="tab-pane"><ConfigTab /></div></div>
+      <div class="swipe-page"><div class="tab-pane"><ModulesTab /></div></div>
+      <div class="swipe-page"><div class="tab-pane"><LogsTab /></div></div>
+      <div class="swipe-page"><div class="tab-pane"><InfoTab /></div></div>
+
+    </div>
   </main>
 
   <Toast />
 </div>
+
+<style>
+  :global(.main-content) {
+    overflow-x: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .swipe-track {
+    display: flex;
+    width: 500%; 
+    height: 100%;
+    will-change: transform;
+  }
+
+  .swipe-page {
+    width: 20%;
+    height: 100%;
+    flex-shrink: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  :global(.tab-pane) {
+    height: 100%;
+    box-sizing: border-box;
+  }
+</style>
