@@ -1,7 +1,6 @@
 # git-cliff ~ configuration file
 # https://git-cliff.org/docs/configuration
 
-
 [changelog]
 # A Tera template to be rendered for each release in the changelog.
 # See https://keats.github.io/tera/docs/#introduction
@@ -13,35 +12,41 @@ body = """
 {% endif %}\
 {% if previous %}\
     {% if previous.commit_id and commit_id %}
-        [{{ previous.commit_id | truncate(length=7, end="") }}]({{ previous.commit_id }})...\
-            [{{ commit_id | truncate(length=7, end="") }}]({{ commit_id }})
+        **[View changes](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/compare/{{ previous.commit_id }}...{{ commit_id }})**\
+        ({{ previous.commit_id | truncate(length=7, end="") }}...{{ commit_id | truncate(length=7, end="") }})
     {% endif %}\
 {% endif %}\
 {% for group, commits in commits | group_by(attribute="group") %}
     ### {{ group | upper_first }}
     {% for commit in commits %}
-        - {{ commit.message | split(pat="\n") | first | upper_first | trim }} ([{{ commit.id | truncate(length=7, end="") }}]({{ commit.id }}))\
+        - {{ commit.message | split(pat="\n") | first | upper_first | trim }}\
+          ([{{ commit.id | truncate(length=7, end="") }}](https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/commit/{{ commit.id }}))\
     {% endfor %}
 {% endfor %}\n
 """
+
 # Remove leading and trailing whitespaces from the changelog's body.
 trim = true
 # Render body even when there are no releases to process.
 render_always = true
+
 # An array of regex based postprocessors to modify the changelog.
 postprocessors = [
     # Replace the placeholder <REPO> with a URL.
     #{ pattern = '<REPO>', replace = "https://github.com/orhun/git-cliff" },
 ]
-# render body even when there are no releases to process
-# render_always = true
-# output file path
-# output = "test.md"
+
+# Footer template
 footer = """
 {% if previous %}\
-**Full Changelog**: {{ remote.github }}/compare/{{ previous.version }}...{{ version }}\
+**Full Changelog**: [{{ previous.version }}...{{ version }}]({{ remote.github }}/compare/{{ previous.version }}...{{ version }})\
 {% endif %}
 """
+
+# Remote repository configuration
+[remote.github]
+owner = "Tools-cx-app"
+repo = "meta-magic_mount"
 
 [git]
 # Parse commits according to the conventional commits specification.
@@ -54,6 +59,7 @@ filter_unconventional = true
 require_conventional = false
 # Split commits on newlines, treating each line as an individual commit.
 split_commits = false
+
 # An array of regex based parsers to modify commit messages prior to further processing.
 commit_preprocessors = [
     # Replace issue numbers with link templates to be updated in `changelog.postprocessors`.
@@ -62,8 +68,10 @@ commit_preprocessors = [
     # If the spelling is incorrect, it will be fixed automatically.
     #{ pattern = '.*', replace_command = 'typos --write-changes -' },
 ]
+
 # Prevent commits that are breaking from being excluded by commit parsers.
 protect_breaking_commits = false
+
 # An array of regex based parsers for extracting data from the commit message.
 # Assigns commits to groups.
 # Optionally sets the commit's scope and can decide to exclude commits from further processing.
@@ -84,6 +92,7 @@ commit_parsers = [
     { message = "^revert", group = "<!-- 9 -->◀️ Revert" },
     { message = ".*", group = "<!-- 10 -->💼 Other" },
 ]
+
 # Exclude commits that are not matched by any commit parser.
 filter_commits = false
 # An array of link parsers for extracting external references, and turning them into URLs, using regex.
