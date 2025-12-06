@@ -35,6 +35,7 @@
     "verboseLabel": "Registro Detallado",
     "verboseOff": "No",
     "verboseOn": "Sí",
+    "dryRun": "Modo de Prueba (Dry Run)",
     "forceExt4": "Forzar Modo Ext4",
     "enableNuke": "Activar Paw Pad (Oculto)",
     "disableUmount": "Desactivar Separación de Espacio de Nombres",

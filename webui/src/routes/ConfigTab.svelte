@@ -2,6 +2,7 @@
   import { store } from '../lib/store.svelte';
   import { ICONS, DEFAULT_CONFIG } from '../lib/constants';
   import ChipInput from '../components/ChipInput.svelte';
+  import { slide } from 'svelte/transition';
   import './ConfigTab.css';
 
   let initialConfigStr = $state('');
@@ -9,12 +10,10 @@
   const isValidPath = (p: string) => !p || (p.startsWith('/') && p.length > 1);
   let invalidModuleDir = $derived(!isValidPath(store.config.moduledir));
   let invalidTempDir = $derived(store.config.tempdir && !isValidPath(store.config.tempdir));
-  
   let isDirty = $derived.by(() => {
     if (!initialConfigStr) return false;
     return JSON.stringify(store.config) !== initialConfigStr;
   });
-
   $effect(() => {
     if (!store.loading.config && store.config) {
       if (!initialConfigStr || initialConfigStr === JSON.stringify(DEFAULT_CONFIG)) {
@@ -22,7 +21,6 @@
       }
     }
   });
-
   function save() {
     if (invalidModuleDir || invalidTempDir) {
       store.showToast(store.L.config.invalidPath, "error");
@@ -52,6 +50,17 @@
       <span class="track"><span class="thumb"></span></span>
     </label>
   </div>
+
+  {#if store.config.verbose}
+    <div class="switch-row" transition:slide>
+      <span>{store.L.config.dryRun}</span>
+      <label class="md3-switch">
+        <input type="checkbox" bind:checked={store.config.dry_run}>
+        <span class="track"><span class="thumb"></span></span>
+      </label>
+    </div>
+  {/if}
+
   <div class="switch-row">
     <span>{store.L.config.forceExt4}</span>
     <label class="md3-switch">

@@ -10,7 +10,8 @@ export const DEFAULT_CONFIG: AppConfig = {
   partitions: [],
   force_ext4: false,
   enable_nuke: false,
-  disable_umount: false
+  disable_umount: false,
+  dry_run: false
 };
 
 export const PATHS = {

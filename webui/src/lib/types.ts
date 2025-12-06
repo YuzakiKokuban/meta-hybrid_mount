@@ -7,6 +7,7 @@ export interface AppConfig {
   force_ext4: boolean;
   enable_nuke: boolean;
   disable_umount: boolean;
+  dry_run: boolean;
   logfile?: string;
 }
 

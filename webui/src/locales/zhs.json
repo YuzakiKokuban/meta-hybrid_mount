@@ -35,6 +35,7 @@
     "verboseLabel": "详细日志",
     "verboseOff": "关闭",
     "verboseOn": "开启",
+    "dryRun": "预演模式 (Dry Run)",
     "forceExt4": "强制 Ext4 模式",
     "enableNuke": "启用肉垫 (隐蔽模式)",
     "disableUmount": "禁用Umount",

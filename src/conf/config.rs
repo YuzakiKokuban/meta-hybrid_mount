@@ -30,7 +30,7 @@ pub struct Config {
     #[serde(default)]
     pub disable_umount: bool,
 
-    #[serde(skip)]
+    #[serde(default)]
     pub dry_run: bool,
 }
 

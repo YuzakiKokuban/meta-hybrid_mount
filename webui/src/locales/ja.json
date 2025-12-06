@@ -35,6 +35,7 @@
     "verboseLabel": "詳細ログ",
     "verboseOff": "オフ",
     "verboseOn": "オン",
+    "dryRun": "ドライランモード (Dry Run)",
     "forceExt4": "Ext4 モードを強制",
     "enableNuke": "肉球を有効化 (ステルス)",
     "disableUmount": "名前空間の分離を無効化",

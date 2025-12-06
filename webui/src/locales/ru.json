@@ -35,6 +35,7 @@
     "verboseLabel": "Подробный лог",
     "verboseOff": "Выкл.",
     "verboseOn": "Вкл.",
+    "dryRun": "Пробный запуск (Dry Run)",
     "forceExt4": "Принудительный Ext4",
     "enableNuke": "Включить Paw Pad (Скрытность)",
     "disableUmount": "Отключить разделение пространств имен",
