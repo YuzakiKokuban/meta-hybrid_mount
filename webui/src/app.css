@@ -51,18 +51,22 @@ html, body, #app {
   -moz-osx-font-smoothing: grayscale;
 }
 
+input, select, textarea, button {
+  font-family: inherit;
+}
 
 button {
   border: none;
   cursor: pointer;
-  font-family: inherit;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
   white-space: nowrap;
 }
+
 button:active {
   transform: scale(0.96);
 }
+
 .btn-filled {
   height: 44px;
   min-width: 90px;
@@ -78,6 +82,7 @@ button:active {
   gap: 8px;
   box-shadow: var(--md-sys-elevation-1);
 }
+
 .btn-filled:disabled {
   background-color: var(--md-sys-color-on-surface);
   opacity: 0.12;
@@ -85,6 +90,7 @@ button:active {
   cursor: not-allowed;
   box-shadow: none;
 }
+
 .btn-tonal {
   height: 44px;
   min-width: 90px;
@@ -99,6 +105,7 @@ button:active {
   justify-content: center;
   gap: 8px;
 }
+
 .btn-icon {
   width: 40px;
   height: 40px;
@@ -109,9 +116,11 @@ button:active {
   align-items: center;
   justify-content: center;
 }
+
 .btn-icon:hover {
   background-color: rgba(128,128,128, 0.1);
 }
+
 .md3-card {
   background-color: var(--md-sys-color-surface-container);
   border-radius: var(--md-sys-shape-corner-large);
@@ -122,9 +131,11 @@ button:active {
   margin-bottom: 16px;
   box-shadow: var(--md-sys-elevation-1);
 }
+
 .text-field {
   position: relative;
 }
+
 .text-field input, .text-field select {
   width: 100%;
   height: 56px;
@@ -138,12 +149,14 @@ button:active {
   transition: border-color 0.2s;
   appearance: none;
 }
+
 .text-field input:focus, .text-field select:focus {
   border-color: var(--md-sys-color-primary);
   border-width: 2px;
   padding-left: 15px;
   padding-right: 15px;
 }
+
 .text-field label {
   position: absolute;
   top: -9px;
@@ -154,6 +167,7 @@ button:active {
   color: var(--md-sys-color-primary);
   z-index: 1;
 }
+
 .bottom-actions {
   position: absolute;
   bottom: 0;
@@ -168,6 +182,11 @@ button:active {
   z-index: 50;
   pointer-events: none;
 }
+
 .bottom-actions button {
   pointer-events: auto;
+}
+
+code, pre {
+  font-family: var(--md-ref-typeface-mono);
 }
