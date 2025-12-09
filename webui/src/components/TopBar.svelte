@@ -15,16 +15,17 @@
   function toggleTheme() {
     let nextTheme: 'light' | 'dark' | 'auto';
     let toastMsg: string;
+    const common = store.L?.common;
 
     if (store.theme === 'auto') {
       nextTheme = 'light';
-      toastMsg = store.L.common.themeLight;
+      toastMsg = common?.themeLight ?? 'Light Mode';
     } else if (store.theme === 'light') {
       nextTheme = 'dark';
-      toastMsg = store.L.common.themeDark;
+      toastMsg = common?.themeDark ?? 'Dark Mode';
     } else {
       nextTheme = 'auto';
-      toastMsg = store.L.common.themeAuto;
+      toastMsg = common?.themeAuto ?? 'Auto Mode';
     }
 
     store.setTheme(nextTheme);
@@ -64,9 +65,9 @@
 
 <header class="top-bar">
   <div class="top-bar-content">
-    <h1 class="screen-title">{store.L.common.appName}</h1>
+    <h1 class="screen-title">{store.L?.common?.appName}</h1>
     <div class="top-actions">
-      <button class="btn-icon" onclick={toggleTheme} title={store.L.common.theme}>
+      <button class="btn-icon" onclick={toggleTheme} title={store.L?.common?.theme}>
         <svg viewBox="0 0 24 24"><path d={getThemeIcon()} fill="currentColor"/></svg>
       </button>
 
@@ -74,7 +75,7 @@
         class="btn-icon" 
         bind:this={langButtonRef}
         onclick={() => showLangMenu = !showLangMenu} 
-        title={store.L.common.language}
+        title={store.L?.common?.language}
       >
         <svg viewBox="0 0 24 24"><path d={ICONS.translate} fill="currentColor"/></svg>
       </button>
@@ -83,7 +84,7 @@
   
   {#if showLangMenu}
     <div class="menu-dropdown" bind:this={menuRef}>
-      {#each store.availableLanguages as l}
+      {#each store.availableLanguages ?? [] as l}
         <button class="menu-item" onclick={() => setLang(l.code)}>{l.name}</button>
       {/each}
     </div>

@@ -49,7 +49,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(255, 255, 255, 0.15); /* Subtle pill bg */
+  background: rgba(255, 255, 255, 0.15);
   padding: 6px 14px 6px 6px;
   border-radius: 24px;
 }
@@ -67,7 +67,7 @@
 .storage-icon-circle svg {
   width: 16px;
   height: 16px;
-  fill: var(--md-sys-color-primary-container); /* Inverted color */
+  fill: var(--md-sys-color-primary-container);
 }
 
 .storage-title {
@@ -78,6 +78,18 @@
   opacity: 1;
 }
 
+.storage-type-badge {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-family: var(--md-ref-typeface-plain);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(0,0,0,0.1); 
+  color: currentColor;
+}
+
 .storage-value-group {
   text-align: right;
   z-index: 1;
@@ -85,7 +97,7 @@
 
 .storage-value {
   display: block;
-  font-size: 64px; /* Even bigger */
+  font-size: 64px;
   line-height: 1;
   font-weight: 400;
   font-family: var(--md-ref-typeface-plain);
@@ -105,7 +117,7 @@
 }
 
 .progress-track {
-  height: 16px; /* Thicker track */
+  height: 16px;
   background-color: rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   overflow: hidden;
@@ -118,10 +130,8 @@
 
 .progress-fill {
   height: 100%;
-  background-color: var(--md-sys-color-primary);
-  /* Or use on-primary-container if contrast is needed, but usually primary looks good on container */
   background-color: currentColor; 
-  opacity: 0.8; /* Make fill slightly distinct from text */
+  opacity: 0.8;
   border-radius: 8px;
   min-width: 16px;
   transition: width 0.6s cubic-bezier(0.3, 0, 0, 1);
@@ -147,6 +157,10 @@
   text-overflow: ellipsis;
 }
 
+.detail-nums {
+  font-weight: 500;
+}
+
 .stats-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -169,6 +183,7 @@
 .stat-value {
   font-size: 28px;
   font-weight: 400;
+  /* 恢复使用 primary color，如果需要 on-surface 请改为 var(--md-sys-color-on-surface) */
   color: var(--md-sys-color-primary);
   font-family: var(--md-ref-typeface-plain);
   white-space: nowrap;
@@ -213,6 +228,7 @@
   color: var(--md-sys-color-on-surface);
 }
 
+/* 确保这个类存在 */
 .dot {
   width: 12px;
   height: 12px;
@@ -231,15 +247,15 @@
   opacity: 0.5;
 }
 
-.skeleton-row {
-  display: flex; 
-  justify-content: space-between;
-}
-
 .skeleton-group {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.skeleton-row {
+  display: flex; 
+  justify-content: space-between;
 }
 
 .info-grid {
@@ -283,6 +299,15 @@
   margin-top: 4px;
 }
 
+.text-success {
+  color: var(--md-sys-color-primary);
+  font-weight: 600;
+}
+
+.text-disabled {
+  color: var(--md-sys-color-outline);
+}
+
 .partition-grid {
   display: flex;
   flex-wrap: wrap;
@@ -313,21 +338,6 @@
   opacity: 0.7;
 }
 
-.storage-type-badge {
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-family: var(--md-ref-typeface-plain);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background: rgba(0,0,0,0.1); 
-  color: currentColor;
-}
-
 .spacer {
   flex: 1;
 }
-
-.skel-mt-8 { margin-top: 8px; }
-.skel-mt-4 { margin-top: 4px; }

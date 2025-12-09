@@ -1,4 +1,5 @@
 import { DEFAULT_CONFIG, PATHS } from './constants';
+import { APP_VERSION } from './constants_gen';
 import { MockAPI } from './api.mock';
 import type { AppConfig, Module, StorageStatus, SystemInfo, DeviceInfo } from './types';
 
@@ -96,7 +97,8 @@ const RealAPI = {
     });
     
     const data = content.replace(/'/g, "'\\''");
-    const modeConfigPath = (PATHS as any).MODE_CONFIG || "/data/adb/meta-hybrid/module_mode.conf";
+    // Use fixed path or derive from config location
+    const modeConfigPath = "/data/adb/meta-hybrid/module_mode.conf";
     const cmd = `mkdir -p "$(dirname "${modeConfigPath}")" && printf '%s\n' '${data}' > "${modeConfigPath}"`;
     
     const { errno } = await ksuExec(cmd);
@@ -105,7 +107,8 @@ const RealAPI = {
 
   readLogs: async (logPath?: string, lines = 1000): Promise<string> => {
     if (!ksuExec) return "";
-    const f = logPath || DEFAULT_CONFIG.logfile;
+    // Use DAEMON_LOG from constants or fallback
+    const f = logPath || (PATHS as any).DAEMON_LOG || "/data/adb/meta-hybrid/daemon.log";
     const cmd = `[ -f "${f}" ] && tail -n ${lines} "${f}" || echo ""`;
     const { errno, stdout, stderr } = await ksuExec(cmd);
     
@@ -114,7 +117,7 @@ const RealAPI = {
   },
 
   getStorageUsage: async (): Promise<StorageStatus> => {
-    if (!ksuExec) return { size: '-', used: '-', percent: '0%', type: null };
+    if (!ksuExec) return { size: '-', used: '-', percent: '0%', type: null, hymofs_available: false };
     try {
       const cmd = `${PATHS.BINARY} storage`;
       const { errno, stdout } = await ksuExec(cmd);
@@ -125,7 +128,7 @@ const RealAPI = {
     } catch (e) {
       console.error("Storage check failed:", e);
     }
-    return { size: '-', used: '-', percent: '0%', type: null };
+    return { size: '-', used: '-', percent: '0%', type: null, hymofs_available: false };
   },
 
   getSystemInfo: async (): Promise<SystemInfo> => {
@@ -142,7 +145,8 @@ const RealAPI = {
         });
       }
 
-      const stateFile = PATHS.DAEMON_STATE || "/data/adb/meta-hybrid/run/daemon_state.json";
+      // Use DAEMON_STATE from constants if available, else hardcode
+      const stateFile = (PATHS as any).DAEMON_STATE || "/data/adb/meta-hybrid/run/daemon_state.json";
       const cmdState = `cat "${stateFile}"`;
       const { errno: errState, stdout: outState } = await ksuExec(cmdState);
       
@@ -156,6 +160,15 @@ const RealAPI = {
         } catch (e) {
           console.error("Failed to parse daemon state JSON", e);
         }
+      } else {
+          // Fallback to checking mount if state file read fails
+          // Use IMAGE_MNT from constants if available
+          const mntPath = (PATHS as any).IMAGE_MNT || "/data/adb/meta-hybrid/img_mnt";
+          const m = await ksuExec(`mount | grep "${mntPath}" | head -n 1`);
+          if (m.errno === 0 && m.stdout) {
+              const parts = m.stdout.split(' ');
+              if (parts.length > 2) info.mountBase = parts[2]; 
+          }
       }
 
       return info;
@@ -166,11 +179,32 @@ const RealAPI = {
   },
 
   getDeviceStatus: async (): Promise<DeviceInfo> => {
-    return { model: 'Device', android: '14', kernel: '-', selinux: '-' };
+    let model = "Device";
+    let android = "14";
+    let kernel = "Unknown";
+    
+    if (ksuExec) {
+        const p1 = await ksuExec('getprop ro.product.model');
+        if (p1.errno === 0) model = p1.stdout.trim();
+        
+        const p2 = await ksuExec('getprop ro.build.version.release');
+        const p3 = await ksuExec('getprop ro.build.version.sdk');
+        if (p2.errno === 0) android = `${p2.stdout.trim()} (API ${p3.stdout.trim()})`;
+        
+        const p4 = await ksuExec('uname -r');
+        if (p4.errno === 0) kernel = p4.stdout.trim();
+    }
+
+    return {
+        model,
+        android,
+        kernel,
+        selinux: "Enforcing"
+    };
   },
 
   getVersion: async (): Promise<string> => {
-    if (!ksuExec) return "v1.0.0";
+    if (!ksuExec) return APP_VERSION;
     try {
         const binPath = PATHS.BINARY;
         const moduleDir = binPath.substring(0, binPath.lastIndexOf('/'));
@@ -187,7 +221,7 @@ const RealAPI = {
     } catch (e) {
         console.error("Failed to read module version", e);
     }
-    return "v1.0.0";
+    return APP_VERSION;
   },
 
   openLink: async (url: string): Promise<void> => {

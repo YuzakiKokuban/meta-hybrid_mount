@@ -25,9 +25,7 @@ export const MockAPI = {
         version: '1.0.0',
         author: 'Developer',
         description: 'This is a mock module for testing.',
-        path: `${dir}/magisk_module_1`,
         mode: 'magic',
-        webui: null
       },
       {
         id: 'overlay_module_2',
@@ -35,9 +33,7 @@ export const MockAPI = {
         version: '2.5',
         author: 'Google',
         description: 'Changes system colors.',
-        path: `${dir}/overlay_module_2`,
         mode: 'auto',
-        webui: 'http://localhost:3000/ui'
       }
     ];
   },
@@ -79,7 +75,8 @@ export const MockAPI = {
       used: '128 MB',
       size: '1024 MB',
       percent: '12.5%',
-      type: 'tmpfs'
+      type: 'tmpfs',
+      hymofs_available: true
     };
   },
 
@@ -95,7 +92,6 @@ export const MockAPI = {
 
   async fetchSystemColor(): Promise<string | null> {
     await delay(100);
-    // Return a mock system color (e.g., Pixel Blue) or null to use default
     return '#8AB4F8';
   },
 

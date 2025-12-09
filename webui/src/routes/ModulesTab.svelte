@@ -9,8 +9,6 @@
 
   let searchQuery = $state('');
   let filterType = $state('all');
-  
-  // Changed to single string ID for accordion behavior
   let expandedId = $state<string | null>(null);
   
   let initialModulesStr = $state('');
@@ -44,13 +42,8 @@
     return matchSearch && matchFilter;
   }));
 
-  // Logic to toggle only one item at a time
   function toggleExpand(id: string) {
-    if (expandedId === id) {
-        expandedId = null; // Close if already open
-    } else {
-        expandedId = id;   // Open new and auto-close others
-    }
+    expandedId = expandedId === id ? null : id;
   }
 
   function handleKeydown(e: KeyboardEvent, id: string) {
@@ -58,6 +51,12 @@
       e.preventDefault();
       toggleExpand(id);
     }
+  }
+
+  function getModeLabel(mode: string) {
+      if (mode === 'magic') return store.L.modules.modeMagic;
+      if (mode === 'hymofs') return "HymoFS";
+      return store.L.modules.modeAuto;
   }
 </script>
 
@@ -81,6 +80,9 @@
       <option value="all">{store.L.modules.filterAll}</option>
       <option value="auto">{store.L.modules.modeAuto}</option>
       <option value="magic">{store.L.modules.modeMagic}</option>
+      {#if store.storage?.hymofs_available}
+        <option value="hymofs">HymoFS</option>
+      {/if}
     </select>
   </div>
 </div>
@@ -122,8 +124,10 @@
             </div>
           </div>
           
-          <div class="mode-badge {mod.mode === 'magic' ? 'badge-magic' : 'badge-auto'}">
-            {mod.mode === 'magic' ? store.L.modules.modeMagic : store.L.modules.modeAuto}
+          <div class="mode-badge {mod.mode === 'magic' ? 'badge-magic' : mod.mode === 'hymofs' ? 'badge-hymofs' : 'badge-auto'}"
+               style:background-color={mod.mode === 'hymofs' ? 'var(--md-sys-color-primary-container)' : ''}
+               style:color={mod.mode === 'hymofs' ? 'var(--md-sys-color-on-primary-container)' : ''}>
+            {getModeLabel(mod.mode)}
           </div>
         </div>
         
@@ -143,6 +147,9 @@
                   >
                     <option value="auto">{store.L.modules.modeAuto}</option>
                     <option value="magic">{store.L.modules.modeMagic}</option>
+                    {#if store.storage?.hymofs_available}
+                      <option value="hymofs">HymoFS</option>
+                    {/if}
                   </select>
                 </div>
               </div>

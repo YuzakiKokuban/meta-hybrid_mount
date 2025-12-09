@@ -17,7 +17,7 @@ export interface Module {
   version: string;
   author: string;
   description: string;
-  mode: 'auto' | 'magic';
+  mode: 'auto' | 'magic' | 'hymofs';
   enabled?: boolean;
   source_path?: string;
 }
@@ -28,6 +28,7 @@ export interface StorageStatus {
   percent: string;
   type: 'tmpfs' | 'ext4' | 'unknown' | null;
   error?: string;
+  hymofs_available: boolean;
 }
 
 export interface SystemInfo {
@@ -59,4 +60,5 @@ export interface LanguageOption {
 export interface ModeStats {
   auto: number;
   magic: number;
+  hymofs: number;
 }
