@@ -26,6 +26,15 @@ const shouldUseMock = import.meta.env.DEV || !ksuExec;
 
 console.log(`[API Init] Mode: ${shouldUseMock ? '🛠️ MOCK (Dev/Browser)' : '🚀 REAL (Device)'}`);
 
+function formatBytes(bytes: number, decimals = 2): string {
+  if (!+bytes) return '0 B';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+
 const RealAPI = {
   loadConfig: async (): Promise<AppConfig> => {
     if (!ksuExec) return DEFAULT_CONFIG;
@@ -97,7 +106,6 @@ const RealAPI = {
     });
     
     const data = content.replace(/'/g, "'\\''");
-    // Use fixed path or derive from config location
     const modeConfigPath = "/data/adb/meta-hybrid/module_mode.conf";
     const cmd = `mkdir -p "$(dirname "${modeConfigPath}")" && printf '%s\n' '${data}' > "${modeConfigPath}"`;
     
@@ -107,7 +115,6 @@ const RealAPI = {
 
   readLogs: async (logPath?: string, lines = 1000): Promise<string> => {
     if (!ksuExec) return "";
-    // Use DAEMON_LOG from constants or fallback
     const f = logPath || (PATHS as any).DAEMON_LOG || "/data/adb/meta-hybrid/daemon.log";
     const cmd = `[ -f "${f}" ] && tail -n ${lines} "${f}" || echo ""`;
     const { errno, stdout, stderr } = await ksuExec(cmd);
@@ -123,7 +130,14 @@ const RealAPI = {
       const { errno, stdout } = await ksuExec(cmd);
       
       if (errno === 0 && stdout) {
-        return JSON.parse(stdout);
+        const raw = JSON.parse(stdout);
+        return {
+          type: raw.type,
+          percent: `${raw.usage_percent}%`,
+          size: formatBytes(raw.total_size),
+          used: formatBytes(raw.used_size),
+          hymofs_available: raw.hymofs_available
+        };
       }
     } catch (e) {
       console.error("Storage check failed:", e);
@@ -145,7 +159,6 @@ const RealAPI = {
         });
       }
 
-      // Use DAEMON_STATE from constants if available, else hardcode
       const stateFile = (PATHS as any).DAEMON_STATE || "/data/adb/meta-hybrid/run/daemon_state.json";
       const cmdState = `cat "${stateFile}"`;
       const { errno: errState, stdout: outState } = await ksuExec(cmdState);
@@ -161,8 +174,6 @@ const RealAPI = {
           console.error("Failed to parse daemon state JSON", e);
         }
       } else {
-          // Fallback to checking mount if state file read fails
-          // Use IMAGE_MNT from constants if available
           const mntPath = (PATHS as any).IMAGE_MNT || "/data/adb/meta-hybrid/img_mnt";
           const m = await ksuExec(`mount | grep "${mntPath}" | head -n 1`);
           if (m.errno === 0 && m.stdout) {
