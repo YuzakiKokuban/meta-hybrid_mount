@@ -8,7 +8,6 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use clap::Parser;
 use mimalloc::MiMalloc;
-use rustix::mount::UnmountFlags;
 
 use conf::{
     cli::{Cli, Commands},
@@ -23,7 +22,6 @@ use core::{
     sync,
     modules,
 };
-use mount::magic;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -215,7 +213,7 @@ fn run() -> Result<()> {
     
     let exec_result = executor::execute(&plan, &config)?;
 
-    let mut final_magic_ids = exec_result.magic_module_ids;
+    let final_magic_ids = exec_result.magic_module_ids;
     
     let mut nuke_active = false;
     if storage_handle.mode == "ext4" && config.enable_nuke {
