@@ -15,6 +15,11 @@ if [ ! -f "$BINARY" ]; then
     log "ERROR: Binary not found at $BINARY"
     exit 1
 fi
+
+if [ -f "/data/adb/hybrid_mount/daemon.log" ]; then
+  mv "/data/adb/hybrid_mount/daemon.log" "/data/adb/hybrid_mount/daemon.log.bak"
+fi
+
 chmod 755 "$BINARY"
 "$BINARY" >> "$LOG_FILE" 2>&1
 EXIT_CODE=$?
