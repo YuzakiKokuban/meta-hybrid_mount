@@ -63,6 +63,7 @@ md-icon svg path {
 }
 .nav-tab.active md-icon svg {
   fill: var(--md-sys-color-on-secondary-container);
+  transform: scale(1.1);
 }
 .nav-tab.active .label {
   font-weight: 600;

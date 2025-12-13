@@ -45,10 +45,11 @@
       onclick={() => onTabChange(tab.id)}
       bind:this={tabRefs[tab.id]}
       type="button"
+      aria-current={activeTab === tab.id ? 'page' : undefined}
     >
       <md-ripple></md-ripple>
       <div class="icon-container">
-        <md-icon>
+        <md-icon aria-hidden="true">
           <svg viewBox="0 0 24 24">
             <path d={tab.icon} style="transition: none" />
           </svg>
