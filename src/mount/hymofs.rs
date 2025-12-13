@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::ffi::{CStr, CString};
 use std::fs::{File, OpenOptions};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
@@ -77,19 +76,17 @@ fn ioc_add_rule() -> libc::c_int { _IOW!(HYMO_IOC_MAGIC as u32, 1, HymoIoctlArg)
 #[allow(dead_code)]
 fn ioc_del_rule() -> libc::c_int { _IOW!(HYMO_IOC_MAGIC as u32, 2, HymoIoctlArg) as libc::c_int }
 fn ioc_hide_rule() -> libc::c_int { _IOW!(HYMO_IOC_MAGIC as u32, 3, HymoIoctlArg) as libc::c_int }
-fn ioc_inject_rule() -> libc::c_int { _IOW!(HYMO_IOC_MAGIC as u32, 4, HymoIoctlArg) as libc::c_int }
 fn ioc_clear_all() -> libc::c_int { _IO!(HYMO_IOC_MAGIC as u32, 5) as libc::c_int }
 fn ioc_get_version() -> libc::c_int { _IOR!(HYMO_IOC_MAGIC as u32, 6, libc::c_int) as libc::c_int }
 #[allow(dead_code)]
 fn ioc_list_rules() -> libc::c_int { _IOWR!(HYMO_IOC_MAGIC as u32, 7, HymoIoctlListArg) as libc::c_int }
+fn ioc_set_debug() -> libc::c_int { _IOW!(HYMO_IOC_MAGIC as u32, 8, libc::c_int) as libc::c_int }
 
 #[derive(Debug, PartialEq)]
-#[allow(dead_code)]
 pub enum HymoFsStatus {
     Available,
     NotPresent,
-    KernelTooOld,
-    ModuleTooOld,
+    ProtocolMismatch,
 }
 
 pub struct HymoFs;
@@ -104,8 +101,15 @@ impl HymoFs {
     }
 
     pub fn check_status() -> HymoFsStatus {
-        if Path::new(DEV_PATH).exists() {
-            HymoFsStatus::Available
+        if !Path::new(DEV_PATH).exists() {
+            return HymoFsStatus::NotPresent;
+        }
+        if let Some(ver) = Self::get_version() {
+            if ver == crate::defs::HYMO_PROTOCOL_VERSION {
+                HymoFsStatus::Available
+            } else {
+                HymoFsStatus::ProtocolMismatch
+            }
         } else {
             HymoFsStatus::NotPresent
         }
@@ -117,13 +121,14 @@ impl HymoFs {
 
     pub fn get_version() -> Option<i32> {
         let file = Self::open_dev().ok()?;
+        let mut ver: libc::c_int = 0;
         let ret = unsafe {
-            libc::ioctl(file.as_raw_fd(), ioc_get_version())
+            libc::ioctl(file.as_raw_fd(), ioc_get_version(), &mut ver)
         };
         if ret < 0 {
             None
         } else {
-            Some(ret)
+            Some(ver as i32)
         }
     }
 
@@ -136,6 +141,19 @@ impl HymoFs {
         if ret < 0 {
             let err = std::io::Error::last_os_error();
             anyhow::bail!("HymoFS clear failed: {}", err);
+        }
+        Ok(())
+    }
+
+    pub fn set_debug(enable: bool) -> Result<()> {
+        let file = Self::open_dev()?;
+        let val: libc::c_int = if enable { 1 } else { 0 };
+        let ret = unsafe {
+            libc::ioctl(file.as_raw_fd(), ioc_set_debug(), &val)
+        };
+        if ret < 0 {
+            let err = std::io::Error::last_os_error();
+            anyhow::bail!("HymoFS set_debug failed: {}", err);
         }
         Ok(())
     }
@@ -208,28 +226,6 @@ impl HymoFs {
         Ok(())
     }
 
-    pub fn inject_dir(dir: &str) -> Result<()> {
-        debug!("HymoFS: INJECT_DIR dir='{}'", dir);
-        let file = Self::open_dev()?;
-        let c_dir = CString::new(dir)?;
-        
-        let arg = HymoIoctlArg {
-            src: c_dir.as_ptr(),
-            target: std::ptr::null(),
-            r#type: 0,
-        };
-
-        let ret = unsafe {
-            libc::ioctl(file.as_raw_fd(), ioc_inject_rule(), &arg)
-        };
-
-        if ret < 0 {
-            let err = std::io::Error::last_os_error();
-            anyhow::bail!("HymoFS inject_dir failed: {}", err);
-        }
-        Ok(())
-    }
-
     #[allow(dead_code)]
     pub fn list_active_rules() -> Result<String> {
         let file = Self::open_dev()?;
@@ -258,11 +254,6 @@ impl HymoFs {
             return Ok(());
         }
 
-        debug!("HymoFS: Scanning module dir: {} -> {}", module_dir.display(), target_base.display());
-
-        let mut injected_dirs = HashSet::new();
-        let mut pending_ops = Vec::new();
-
         for entry in WalkDir::new(module_dir).min_depth(1) {
             let entry = match entry {
                 Ok(e) => e,
@@ -272,7 +263,7 @@ impl HymoFs {
                 }
             };
 
-            let current_path = entry.path().to_path_buf();
+            let current_path = entry.path();
             let relative_path = match current_path.strip_prefix(module_dir) {
                 Ok(p) => p,
                 Err(_) => continue,
@@ -281,30 +272,6 @@ impl HymoFs {
             let file_type = entry.file_type();
 
             if file_type.is_file() || file_type.is_symlink() {
-                if let Some(parent) = target_path.parent() {
-                    injected_dirs.insert(parent.to_string_lossy().to_string());
-                }
-                pending_ops.push((true, target_path, current_path));
-            } else if file_type.is_char_device() {
-                if let Ok(metadata) = entry.metadata() {
-                    if metadata.rdev() == 0 {
-                        if let Some(parent) = target_path.parent() {
-                            injected_dirs.insert(parent.to_string_lossy().to_string());
-                        }
-                        pending_ops.push((false, target_path, current_path));
-                    }
-                }
-            }
-        }
-
-        for dir in injected_dirs {
-            if let Err(e) = Self::inject_dir(&dir) {
-                 debug!("HymoFS: Inject dir '{}' warning: {}", dir, e);
-            }
-        }
-
-        for (is_add, target_path, current_path) in pending_ops {
-            if is_add {
                 if let Err(e) = Self::add_rule(
                     &target_path.to_string_lossy(),
                     &current_path.to_string_lossy(),
@@ -312,9 +279,13 @@ impl HymoFs {
                 ) {
                     warn!("Failed to add rule for {}: {}", target_path.display(), e);
                 }
-            } else {
-                if let Err(e) = Self::hide_path(&target_path.to_string_lossy()) {
-                    warn!("Failed to hide path {}: {}", target_path.display(), e);
+            } else if file_type.is_char_device() {
+                if let Ok(metadata) = entry.metadata() {
+                    if metadata.rdev() == 0 {
+                        if let Err(e) = Self::hide_path(&target_path.to_string_lossy()) {
+                            warn!("Failed to hide path {}: {}", target_path.display(), e);
+                        }
+                    }
                 }
             }
         }

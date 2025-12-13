@@ -209,6 +209,12 @@ fn run() -> Result<()> {
 
     let _log_guard = utils::init_logging(config.verbose, Path::new(defs::DAEMON_LOG_FILE))?;
     
+    if crate::mount::hymofs::HymoFs::is_available() {
+        if let Err(e) = crate::mount::hymofs::HymoFs::set_debug(config.verbose) {
+            log::warn!("Failed to set HymoFS debug mode: {}", e);
+        }
+    }
+    
     let camouflage_name = utils::random_kworker_name();
     if let Err(e) = utils::camouflage_process(&camouflage_name) {
         log::warn!("Failed to camouflage process: {}", e);

@@ -7,7 +7,7 @@ use rustix::mount::UnmountFlags;
 
 use crate::{
     conf::config, 
-    mount::{magic, overlay, hymofs::HymoFs}, 
+    mount::{magic, overlay, hymofs::{HymoFs, HymoFsStatus}}, 
     utils,
     core::planner::MountPlan
 };
@@ -101,38 +101,46 @@ pub fn execute(plan: &MountPlan, config: &config::Config) -> Result<ExecutionRes
     plan.hymo_module_ids.iter().for_each(|id| { final_hymo_ids.insert(id.clone()); });
 
     if !plan.hymo_ops.is_empty() {
-         if HymoFs::is_available() {
-            log::info!(">> Phase 1: HymoFS Injection...");
-            if let Err(e) = HymoFs::clear() {
-                log::warn!("Failed to reset HymoFS rules: {}", e);
-            }
-            for op in &plan.hymo_ops {
-                let part_name = op.target.file_name()
-                    .map(|s| s.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "unknown".to_string());
-                log::debug!("Injecting {} -> {}", op.source.display(), op.target.display());
-                match HymoFs::inject_directory(&op.target, &op.source) {
-                    Ok(_) => {
-                        if let Some(root) = extract_module_root(&op.source) {
-                            global_success_map.entry(root).or_default().insert(part_name);
+        match HymoFs::check_status() {
+            HymoFsStatus::Available => {
+                log::info!(">> Phase 1: HymoFS Injection (Protocol v{})...", crate::defs::HYMO_PROTOCOL_VERSION);
+                if let Err(e) = HymoFs::clear() {
+                    log::warn!("Failed to reset HymoFS rules: {}", e);
+                }
+                for op in &plan.hymo_ops {
+                    let part_name = op.target.file_name()
+                        .map(|s| s.to_string_lossy().to_string())
+                        .unwrap_or_else(|| "unknown".to_string());
+                    log::debug!("Injecting {} -> {}", op.source.display(), op.target.display());
+                    match HymoFs::inject_directory(&op.target, &op.source) {
+                        Ok(_) => {
+                            if let Some(root) = extract_module_root(&op.source) {
+                                global_success_map.entry(root).or_default().insert(part_name);
+                            }
+                        },
+                        Err(e) => {
+                            log::error!("HymoFS failed for {}: {}. Fallback to Magic Mount.", op.module_id, e);
+                            if let Some(root) = extract_module_root(&op.source) {
+                                magic_queue.push(root);
+                            }
+                            final_hymo_ids.remove(&op.module_id);
                         }
-                    },
-                    Err(e) => {
-                        log::error!("HymoFS failed for {}: {}. Fallback to Magic Mount.", op.module_id, e);
-                        if let Some(root) = extract_module_root(&op.source) {
-                            magic_queue.push(root);
-                        }
-                        final_hymo_ids.remove(&op.module_id);
                     }
                 }
-            }
-        } else {
-            log::warn!("!! HymoFS requested but kernel support is missing. Falling back to Magic Mount.");
-            for op in &plan.hymo_ops {
-                if let Some(root) = extract_module_root(&op.source) {
-                    magic_queue.push(root);
+            },
+            status => {
+                let reason = match status {
+                    HymoFsStatus::NotPresent => "Kernel module not loaded",
+                    HymoFsStatus::ProtocolMismatch => "Protocol version mismatch",
+                    _ => "Unavailable",
+                };
+                log::warn!("!! HymoFS requested but unavailable: {}. Falling back to Magic Mount.", reason);
+                for op in &plan.hymo_ops {
+                    if let Some(root) = extract_module_root(&op.source) {
+                        magic_queue.push(root);
+                    }
+                    final_hymo_ids.remove(&op.module_id);
                 }
-                final_hymo_ids.remove(&op.module_id);
             }
         }
     }
