@@ -40,12 +40,12 @@ const fn _iow(type_: u32, nr: u32, size: usize) -> u32 {
     _ioc(_IOC_WRITE, type_, nr, size as u32)
 }
 
-const HYMO_IOC_ADD_RULE: u64 = _iow(HYMO_IOC_MAGIC as u32, 1, std::mem::size_of::<HymoIoctlArg>()) as u64;
-const HYMO_IOC_DEL_RULE: u64 = _iow(HYMO_IOC_MAGIC as u32, 2, std::mem::size_of::<HymoIoctlArg>()) as u64;
-const HYMO_IOC_HIDE_RULE: u64 = _iow(HYMO_IOC_MAGIC as u32, 3, std::mem::size_of::<HymoIoctlArg>()) as u64;
-const HYMO_IOC_CLEAR_ALL: u64 = _io(HYMO_IOC_MAGIC as u32, 5) as u64;
-const HYMO_IOC_GET_VERSION: u64 = _ior(HYMO_IOC_MAGIC as u32, 6, std::mem::size_of::<i32>()) as u64;
-const HYMO_IOC_SET_DEBUG: u64 = _iow(HYMO_IOC_MAGIC as u32, 8, std::mem::size_of::<i32>()) as u64;
+const HYMO_IOC_ADD_RULE: i32 = _iow(HYMO_IOC_MAGIC as u32, 1, std::mem::size_of::<HymoIoctlArg>()) as i32;
+const HYMO_IOC_DEL_RULE: i32 = _iow(HYMO_IOC_MAGIC as u32, 2, std::mem::size_of::<HymoIoctlArg>()) as i32;
+const HYMO_IOC_HIDE_RULE: i32 = _iow(HYMO_IOC_MAGIC as u32, 3, std::mem::size_of::<HymoIoctlArg>()) as i32;
+const HYMO_IOC_CLEAR_ALL: i32 = _io(HYMO_IOC_MAGIC as u32, 5) as i32;
+const HYMO_IOC_GET_VERSION: i32 = _ior(HYMO_IOC_MAGIC as u32, 6, std::mem::size_of::<i32>()) as i32;
+const HYMO_IOC_SET_DEBUG: i32 = _iow(HYMO_IOC_MAGIC as u32, 8, std::mem::size_of::<i32>()) as i32;
 
 #[repr(C)]
 struct HymoIoctlArg {
