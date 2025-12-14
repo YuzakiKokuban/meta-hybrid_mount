@@ -36,39 +36,35 @@
   }
 </script>
 
-<md-dialog open={showRebootConfirm} onclose={() => showRebootConfirm = false}>
+<md-dialog 
+  open={showRebootConfirm} 
+  onclose={() => showRebootConfirm = false}
+  style="--md-dialog-scrim-color: transparent; --md-sys-color-scrim: transparent;"
+>
   <div slot="headline">{store.L?.common?.rebootTitle ?? 'Reboot System?'}</div>
   <div slot="content">
     {store.L?.common?.rebootConfirm ?? 'Are you sure you want to reboot the device?'}
   </div>
   <div slot="actions">
-    <md-text-button onclick={() => showRebootConfirm = false}>
+    <md-text-button 
+      onclick={() => showRebootConfirm = false}
+      role="button"
+      tabindex="0"
+      onkeydown={() => {}}
+    >
       {store.L?.common?.cancel ?? 'Cancel'}
     </md-text-button>
-    <md-text-button onclick={() => { showRebootConfirm = false; API.reboot(); }}>
+    <md-text-button 
+      onclick={() => { showRebootConfirm = false; API.reboot(); }}
+      role="button"
+      tabindex="0"
+      onkeydown={() => {}}
+    >
       {store.L?.common?.reboot ?? 'Reboot'}
     </md-text-button>
   </div>
 </md-dialog>
 
-<BottomActions>
-  <div class="spacer"></div>
-  <div style="display: flex; gap: 8px; align-items: center;">
-    <md-filled-tonal-icon-button 
-      class="reboot-btn"
-      onclick={() => showRebootConfirm = true}
-      title="Reboot"
-      role="button"
-      tabindex="0"
-      onkeydown={() => {}}
-    >
-      <md-icon>
-        <svg viewBox="0 0 24 24"><path d={ICONS.power} /></svg>
-      </md-icon>
-    </md-filled-tonal-icon-button>
-    
-    </div>
-</BottomActions>
 <div class="dashboard-grid">
   <div class="storage-card">
     {#if store.loading.status}
@@ -100,7 +96,6 @@
                 {store.storage.type?.toUpperCase()}
               </span>
              {/if}
-      
         </div>
         <div class="storage-value-group">
             <span class="storage-value">{store.storage?.percent ?? '0%'}</span>
@@ -279,7 +274,7 @@
   <div style="display: flex; gap: 8px; align-items: center;">
     <md-filled-tonal-icon-button 
       class="reboot-btn"
-      onclick={() => API.reboot()}
+      onclick={() => showRebootConfirm = true}
       title="Reboot"
       role="button"
       tabindex="0"
