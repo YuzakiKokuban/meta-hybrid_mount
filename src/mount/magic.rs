@@ -20,7 +20,8 @@ use crate::{
     utils::{ensure_dir_exists, lgetfilecon, lsetfilecon},
 };
 #[cfg(any(target_os = "linux", target_os = "android"))]
-use crate::utils::send_unmountable;
+use crate::try_umount::send_unmountable;
+
 const ROOT_PARTITIONS: [&str; 4] = [
     "vendor",
     "system_ext",
