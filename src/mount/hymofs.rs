@@ -7,10 +7,10 @@ use anyhow::{Context, Result};
 use log::{debug, warn};
 use walkdir::WalkDir;
 use libc::{c_int, c_ulong, c_char};
+use crate::defs::HYMO_PROTOCOL_VERSION;
 
 const DEV_PATH: &str = "/dev/hymo_ctl";
 const HYMO_IOC_MAGIC: u8 = 0xE0;
-const HYMO_PROTOCOL_VERSION: i32 = 5;
 
 const _IOC_NRBITS: u32 = 8;
 const _IOC_TYPEBITS: u32 = 8;
@@ -93,6 +93,7 @@ impl HymoFs {
         if !Path::new(DEV_PATH).exists() {
             return HymoFsStatus::NotPresent;
         }
+        
         if let Some(ver) = Self::get_version() {
             if ver == HYMO_PROTOCOL_VERSION {
                 HymoFsStatus::Available
@@ -113,7 +114,7 @@ impl HymoFs {
         let file = Self::open_dev().ok()?;
         let mut ver: c_int = 0;
         let ret = unsafe {
-            libc::ioctl(file.as_raw_fd(), HYMO_IOC_GET_VERSION, &mut ver)
+            libc::ioctl(file.as_raw_fd(), HYMO_IOC_GET_VERSION as c_int, &mut ver)
         };
         if ret < 0 {
             None
@@ -126,7 +127,7 @@ impl HymoFs {
         debug!("HymoFS: Clearing all rules");
         let file = Self::open_dev()?;
         let ret = unsafe {
-            libc::ioctl(file.as_raw_fd(), HYMO_IOC_CLEAR_ALL)
+            libc::ioctl(file.as_raw_fd(), HYMO_IOC_CLEAR_ALL as c_int)
         };
         if ret < 0 {
             let err = std::io::Error::last_os_error();
@@ -139,7 +140,7 @@ impl HymoFs {
         let file = Self::open_dev()?;
         let val: c_int = if enable { 1 } else { 0 };
         let ret = unsafe {
-            libc::ioctl(file.as_raw_fd(), HYMO_IOC_SET_DEBUG, &val)
+            libc::ioctl(file.as_raw_fd(), HYMO_IOC_SET_DEBUG as c_int, &val)
         };
         if ret < 0 {
             let err = std::io::Error::last_os_error();
@@ -161,7 +162,7 @@ impl HymoFs {
         };
 
         let ret = unsafe {
-            libc::ioctl(file.as_raw_fd(), HYMO_IOC_ADD_RULE, &arg)
+            libc::ioctl(file.as_raw_fd(), HYMO_IOC_ADD_RULE as c_int, &arg)
         };
 
         if ret < 0 {
@@ -184,7 +185,7 @@ impl HymoFs {
         };
 
         let ret = unsafe {
-            libc::ioctl(file.as_raw_fd(), HYMO_IOC_DEL_RULE, &arg)
+            libc::ioctl(file.as_raw_fd(), HYMO_IOC_DEL_RULE as c_int, &arg)
         };
 
         if ret < 0 {
@@ -206,7 +207,7 @@ impl HymoFs {
         };
 
         let ret = unsafe {
-            libc::ioctl(file.as_raw_fd(), HYMO_IOC_HIDE_RULE, &arg)
+            libc::ioctl(file.as_raw_fd(), HYMO_IOC_HIDE_RULE as c_int, &arg)
         };
 
         if ret < 0 {
@@ -227,7 +228,7 @@ impl HymoFs {
         };
 
         let ret = unsafe {
-            libc::ioctl(file.as_raw_fd(), HYMO_IOC_LIST_RULES, &mut arg)
+            libc::ioctl(file.as_raw_fd(), HYMO_IOC_LIST_RULES as c_int, &mut arg)
         };
 
         if ret < 0 {
