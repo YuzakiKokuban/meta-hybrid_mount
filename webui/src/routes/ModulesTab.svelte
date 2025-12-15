@@ -160,7 +160,7 @@
                     <svg viewBox="0 0 24 24" width="20" height="20" class="conflict-icon"><path d={ICONS.warning} fill="currentColor"/></svg>
                     {store.L.modules?.conflictsTitle || 'File Conflicts'}
                 </div>
-                <button class="btn-icon-small" onclick={closeConflicts} title="Close">
+                <button class="btn-icon-small" onclick={closeConflicts} title="Close" aria-label="Close">
                     <svg viewBox="0 0 24 24" width="18" height="18"><path d={ICONS.close} fill="currentColor"/></svg>
                 </button>
             </div>
@@ -312,7 +312,7 @@
               <div class="paths-editor">
                  <div class="paths-header">
                     <span class="config-label">{store.L.modules?.pathRules ?? 'Path Overrides'}:</span>
-                     <button class="btn-icon add-rule" onclick={() => addPathRule(mod)} title={store.L.modules?.addRule ?? 'Add Rule'}>
+                     <button class="btn-icon add-rule" onclick={() => addPathRule(mod)} title={store.L.modules?.addRule ?? 'Add Rule'} aria-label={store.L.modules?.addRule ?? 'Add Rule'}>
                          <svg viewBox="0 0 24 24" width="20" height="20"><path d={ICONS.add} fill="currentColor"/></svg>
                      </button>
                  </div>
@@ -340,7 +340,7 @@
                                     {/if}
                                     <option value="ignore">{store.L.modules?.modes?.short?.ignore ?? 'Ignore'}</option>
                                 </select>
-                                <button class="btn-icon delete" onclick={() => removePathRule(mod, path)} title="Remove rule">
+                                <button class="btn-icon delete" onclick={() => removePathRule(mod, path)} title="Remove rule" aria-label="Remove rule">
                                    <svg viewBox="0 0 24 24" width="18" height="18"><path d={ICONS.delete} fill="currentColor"/></svg>
                                 </button>
                             </div>
@@ -363,6 +363,7 @@
     onclick={load} 
     disabled={store.loading.modules}
     title={store.L.modules?.reload}
+    aria-label={store.L.modules?.reload}
     role="button"
     tabindex="0"
     onkeydown={() => {}}

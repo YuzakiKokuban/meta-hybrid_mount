@@ -57,6 +57,7 @@
       <md-icon-button 
         onclick={toggleTheme} 
         title={store.L?.common?.theme}
+        aria-label={store.L?.common?.theme}
         role="button"
         tabindex="0"
         onkeydown={() => {}}
@@ -71,6 +72,7 @@
           bind:this={langButtonRef}
           onclick={() => showLangMenu = !showLangMenu} 
           title={store.L?.common?.language}
+          aria-label={store.L?.common?.language}
           role="button"
           tabindex="0"
           onkeydown={() => {}}

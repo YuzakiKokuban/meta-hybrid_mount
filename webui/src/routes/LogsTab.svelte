@@ -145,6 +145,7 @@
     onclick={copyLogs} 
     disabled={filteredLogs.length === 0} 
     title={store.L.logs.copy}
+    aria-label={store.L.logs.copy}
     role="button"
     tabindex="0"
     onkeydown={() => {}}
@@ -158,6 +159,7 @@
     onclick={() => refreshLogs(false)} 
     disabled={store.loading.logs}
     title={store.L.logs.refresh}
+    aria-label={store.L.logs.refresh}
     role="button"
     tabindex="0"
     onkeydown={() => {}}
