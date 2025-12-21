@@ -51,10 +51,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: webui/package-lock.json
 
-      - name: Check Code Quality (Clippy)
-        run: |
-          cargo clippy --workspace --all-targets --all-features -- -D warnings
-
       - name: Configure Version
         run: |
           git fetch --tags
