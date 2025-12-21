@@ -3,6 +3,7 @@ use log::{info, warn};
 use std::{
     ffi::CString,
     fs,
+    io::{BufRead, BufReader},
     os::fd::AsRawFd,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
@@ -47,6 +48,36 @@ fn get_overlay_features() -> String {
     }
 
     features
+}
+
+fn get_sub_mounts(parent: &str) -> Result<Vec<String>> {
+    let file = fs::File::open("/proc/mounts").context("Failed to open /proc/mounts")?;
+    let reader = BufReader::new(file);
+    let mut sub_mounts = Vec::new();
+
+    let parent_prefix = if parent.ends_with('/') {
+        parent.to_string()
+    } else {
+        format!("{}/", parent)
+    };
+
+    for line in reader.lines() {
+        let line = line?;
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 2 {
+            continue;
+        }
+        let mount_point = parts[1];
+
+        if mount_point.starts_with(&parent_prefix) && mount_point != parent {
+            if !mount_point.contains("hybrid_mount") {
+                sub_mounts.push(mount_point.to_string());
+            }
+        }
+    }
+
+    sub_mounts.sort_by_key(|a| a.len());
+    Ok(sub_mounts)
 }
 
 pub fn mount_overlayfs(
@@ -353,6 +384,27 @@ pub fn mount_overlay(
 
     let stock_root = format!("/proc/self/fd/{}", root_file.as_raw_fd());
 
+    let mut all_child_mounts = child_mounts.to_vec();
+
+    match get_sub_mounts(target_root) {
+        Ok(sub_mounts) => {
+            if !sub_mounts.is_empty() {
+                info!(
+                    "Auto-detected sub-mounts under {}: {:?}",
+                    target_root, sub_mounts
+                );
+            }
+            for mount in sub_mounts {
+                if !all_child_mounts.contains(&mount) {
+                    all_child_mounts.push(mount);
+                }
+            }
+        }
+        Err(e) => {
+            warn!("Failed to detect sub-mounts: {}", e);
+        }
+    }
+
     mount_overlayfs(
         module_roots,
         &stock_root,
@@ -364,7 +416,7 @@ pub fn mount_overlay(
     )
     .with_context(|| format!("mount overlayfs for root {target_root} failed"))?;
 
-    for mount_point in child_mounts {
+    for mount_point in all_child_mounts {
         let relative = mount_point.replacen(target_root, "", 1);
         let stock_root_relative = format!("{}{}", stock_root, relative);
 
@@ -373,7 +425,7 @@ pub fn mount_overlay(
         }
 
         if let Err(e) = mount_overlay_child(
-            mount_point,
+            &mount_point,
             &relative,
             module_roots,
             &stock_root_relative,
