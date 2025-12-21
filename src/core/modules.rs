@@ -1,14 +1,22 @@
-use std::collections::HashSet;
-use std::fs::{self, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
-use std::os::unix::fs::{FileTypeExt, MetadataExt};
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashSet,
+    fs::{self, OpenOptions},
+    io::{BufRead, BufReader, Write},
+    os::unix::fs::{FileTypeExt, MetadataExt},
+    path::{Path, PathBuf},
+};
+
 use anyhow::Result;
 use serde::Serialize;
-use crate::conf::config::Config;
-use crate::core::inventory::{self, MountMode};
-use crate::defs;
-use crate::core::state::RuntimeState;
+
+use crate::{
+    conf::config::Config,
+    core::{
+        inventory::{self, MountMode},
+        state::RuntimeState,
+    },
+    defs,
+};
 
 #[derive(Default)]
 struct ModuleProp {
@@ -54,7 +62,7 @@ struct ModuleInfo {
 impl ModuleInfo {
     fn new(m: inventory::Module, mounted_set: &HashSet<&str>) -> Self {
         let prop = ModuleProp::from(m.source_path.join("module.prop").as_path());
-        
+
         let mode_str = match m.rules.default_mode {
             MountMode::Overlay => "auto",
             MountMode::HymoFs => "hymofs",
@@ -89,12 +97,13 @@ impl ModuleFile {
         let real_path = root.join(relative);
         let metadata = fs::symlink_metadata(&real_path)?;
         let file_type = metadata.file_type();
-        
+
         let is_whiteout = file_type.is_char_device() && metadata.rdev() == 0;
-        
+
         let is_replace = file_type.is_dir() && real_path.join(defs::REPLACE_DIR_FILE_NAME).exists();
-        
-        let is_replace_file = real_path.file_name()
+
+        let is_replace_file = real_path
+            .file_name()
             .and_then(|n| n.to_str())
             .map(|s| s == defs::REPLACE_DIR_FILE_NAME)
             .unwrap_or(false);
@@ -113,12 +122,15 @@ impl ModuleFile {
 pub fn print_list(config: &Config) -> Result<()> {
     let modules = inventory::scan(&config.moduledir, config)?;
     let state = RuntimeState::load().unwrap_or_default();
-    let mounted_ids: HashSet<&str> = state.overlay_modules.iter()
+    let mounted_ids: HashSet<&str> = state
+        .overlay_modules
+        .iter()
         .chain(state.magic_modules.iter())
         .chain(state.hymo_modules.iter())
         .map(|s| s.as_str())
         .collect();
-    let infos: Vec<ModuleInfo> = modules.into_iter()
+    let infos: Vec<ModuleInfo> = modules
+        .into_iter()
         .map(|m| ModuleInfo::new(m, &mounted_ids))
         .collect();
 
@@ -127,23 +139,35 @@ pub fn print_list(config: &Config) -> Result<()> {
 }
 
 pub fn update_description(
-    storage_mode: &str, 
-    nuke_active: bool, 
-    overlay_count: usize, 
-    magic_count: usize, 
-    hymo_count: usize
+    storage_mode: &str,
+    nuke_active: bool,
+    overlay_count: usize,
+    magic_count: usize,
+    hymo_count: usize,
 ) {
     let prop_path = Path::new(defs::MODULE_PROP_FILE);
     if !prop_path.exists() {
         return;
     }
 
-    let mode_str = if storage_mode == "tmpfs" { "Tmpfs" } else { "Ext4" };
-    let status_emoji = if storage_mode == "tmpfs" { "🐾" } else { "💿" };
-    let nuke_str = if nuke_active { " | 肉垫: 开启 ✨" } else { "" };
-    
+    let mode_str = if storage_mode == "tmpfs" {
+        "Tmpfs"
+    } else {
+        "Ext4"
+    };
+    let status_emoji = if storage_mode == "tmpfs" {
+        "🐾"
+    } else {
+        "💿"
+    };
+    let nuke_str = if nuke_active {
+        " | 肉垫: 开启 ✨"
+    } else {
+        ""
+    };
+
     let desc_text = format!(
-        "description=😋 运行中喵～ ({}) {} | Hymo: {} | Overlay: {} | Magic: {}{}", 
+        "description=😋 运行中喵～ ({}) {} | Hymo: {} | Overlay: {} | Magic: {}{}",
         mode_str, status_emoji, hymo_count, overlay_count, magic_count, nuke_str
     );
 
@@ -162,7 +186,11 @@ pub fn update_description(
         Err(_) => return,
     };
 
-    if let Ok(mut file) = OpenOptions::new().write(true).truncate(true).open(prop_path) {
+    if let Ok(mut file) = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(prop_path)
+    {
         for line in lines {
             let _ = writeln!(file, "{}", line);
         }

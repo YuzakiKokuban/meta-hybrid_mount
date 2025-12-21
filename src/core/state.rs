@@ -1,8 +1,12 @@
-use std::fs;
-use std::path::PathBuf;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    fs,
+    path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
+};
+
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+
 use crate::defs;
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -31,9 +35,9 @@ pub struct RuntimeState {
 impl RuntimeState {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        storage_mode: String, 
-        mount_point: PathBuf, 
-        overlay_modules: Vec<String>, 
+        storage_mode: String,
+        mount_point: PathBuf,
+        overlay_modules: Vec<String>,
         magic_modules: Vec<String>,
         hymo_modules: Vec<String>,
         nuke_active: bool,
@@ -42,7 +46,10 @@ impl RuntimeState {
         hymofs_available: bool,
     ) -> Self {
         let start = SystemTime::now();
-        let timestamp = start.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+        let timestamp = start
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
         let pid = std::process::id();
         Self {
             timestamp,

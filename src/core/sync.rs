@@ -1,9 +1,12 @@
-use std::collections::HashSet;
-use std::fs;
-use std::path::Path;
+use std::{collections::HashSet, fs, path::Path};
+
 use anyhow::Result;
 use rayon::prelude::*;
-use crate::{defs, utils, core::inventory::{Module, MountMode}};
+
+use crate::{
+    core::inventory::{Module, MountMode},
+    defs, utils,
+};
 
 pub fn perform_sync(modules: &[Module], target_base: &Path) -> Result<()> {
     log::info!("Starting smart module sync to {}", target_base.display());
@@ -42,11 +45,11 @@ pub fn perform_sync(modules: &[Module], target_base: &Path) -> Result<()> {
 }
 
 fn prune_orphaned_modules(modules: &[Module], target_base: &Path) -> Result<()> {
-    if !target_base.exists() { return Ok(()); }
+    if !target_base.exists() {
+        return Ok(());
+    }
     let active_ids: HashSet<&str> = modules.iter().map(|m| m.id.as_str()).collect();
-    let entries: Vec<_> = fs::read_dir(target_base)?
-        .filter_map(|e| e.ok())
-        .collect();
+    let entries: Vec<_> = fs::read_dir(target_base)?.filter_map(|e| e.ok()).collect();
     entries.par_iter().for_each(|entry| {
         let path = entry.path();
         let name_os = entry.file_name();
@@ -92,14 +95,16 @@ fn repair_module_contexts(module_root: &Path, module_id: &str) {
 }
 
 fn recursive_context_repair(base: &Path, current: &Path) -> Result<()> {
-    if !current.exists() { return Ok(()); }
+    if !current.exists() {
+        return Ok(());
+    }
     let file_name = current.file_name().and_then(|n| n.to_str()).unwrap_or("");
     if file_name == "upperdir" || file_name == "workdir" {
-         if let Some(parent) = current.parent() {
-             if let Ok(ctx) = utils::lgetfilecon(parent) {
-                 let _ = utils::lsetfilecon(current, &ctx);
-             }
-         }
+        if let Some(parent) = current.parent() {
+            if let Ok(ctx) = utils::lgetfilecon(parent) {
+                let _ = utils::lsetfilecon(current, &ctx);
+            }
+        }
     } else {
         let relative = current.strip_prefix(base)?;
         let system_path = Path::new("/").join(relative);
@@ -107,7 +112,7 @@ fn recursive_context_repair(base: &Path, current: &Path) -> Result<()> {
             let _ = utils::copy_path_context(&system_path, current);
         } else if let Some(parent) = system_path.parent() {
             if parent.exists() {
-                 let _ = utils::copy_path_context(parent, current);
+                let _ = utils::copy_path_context(parent, current);
             }
         }
     }
@@ -126,7 +131,9 @@ fn has_files_recursive(path: &Path) -> bool {
         for entry in entries.flatten() {
             if let Ok(ft) = entry.file_type() {
                 if ft.is_dir() {
-                    if has_files_recursive(&entry.path()) { return true; }
+                    if has_files_recursive(&entry.path()) {
+                        return true;
+                    }
                 } else {
                     return true;
                 }

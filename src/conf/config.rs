@@ -1,8 +1,9 @@
 use std::{
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
-    collections::HashMap,
 };
+
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +12,7 @@ pub const CONFIG_FILE_DEFAULT: &str = "/data/adb/meta-hybrid/config.toml";
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct WinnowingTable {
     #[serde(flatten)]
-    pub rules: HashMap<String, String>, 
+    pub rules: HashMap<String, String>,
 }
 
 impl WinnowingTable {
@@ -21,9 +22,10 @@ impl WinnowingTable {
     }
 
     pub fn set_rule(&mut self, file_path: &str, module_id: &str) {
-        self.rules.insert(file_path.to_string(), module_id.to_string());
+        self.rules
+            .insert(file_path.to_string(), module_id.to_string());
     }
-    
+
     #[allow(dead_code)]
     pub fn remove_rule(&mut self, file_path: &str) {
         self.rules.remove(file_path);
@@ -38,8 +40,12 @@ pub struct GranaryConfig {
     pub retention_days: u64,
 }
 
-fn default_max_backups() -> usize { 20 }
-fn default_retention_days() -> u64 { 0 }
+fn default_max_backups() -> usize {
+    20
+}
+fn default_retention_days() -> u64 {
+    0
+}
 
 impl Default for GranaryConfig {
     fn default() -> Self {
@@ -156,10 +162,20 @@ impl Config {
         partitions: Vec<String>,
         dry_run: bool,
     ) {
-        if let Some(dir) = moduledir { self.moduledir = dir; }
-        if let Some(source) = mountsource { self.mountsource = source; }
-        if verbose { self.verbose = true; }
-        if !partitions.is_empty() { self.partitions = partitions; }
-        if dry_run { self.dry_run = true; }
+        if let Some(dir) = moduledir {
+            self.moduledir = dir;
+        }
+        if let Some(source) = mountsource {
+            self.mountsource = source;
+        }
+        if verbose {
+            self.verbose = true;
+        }
+        if !partitions.is_empty() {
+            self.partitions = partitions;
+        }
+        if dry_run {
+            self.dry_run = true;
+        }
     }
 }

@@ -1,5 +1,7 @@
 use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
+
 use super::config::CONFIG_FILE_DEFAULT;
 
 #[derive(Parser, Debug)]

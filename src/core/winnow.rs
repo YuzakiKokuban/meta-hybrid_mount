@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
-use serde::{Deserialize, Serialize};
-use crate::conf::config::WinnowingTable;
-use crate::core::planner::ConflictEntry;
 
+use serde::{Deserialize, Serialize};
+
+use crate::{conf::config::WinnowingTable, core::planner::ConflictEntry};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChaffConflict {
     pub path: PathBuf,
@@ -11,29 +11,35 @@ pub struct ChaffConflict {
     pub is_forced: bool,
 }
 
-pub fn sift_conflicts(
-    conflicts: Vec<ConflictEntry>,
-    table: &WinnowingTable
-) -> Vec<ChaffConflict> {
-    conflicts.into_iter().map(|c| {
-        let path_str = format!("/{}/{}", c.partition, c.relative_path); 
-        let forced_module = table.get_preferred_module(Path::new(&path_str));
-        
-        let selected = if let Some(forced) = &forced_module {
-            if c.contending_modules.contains(forced) {
-                forced.clone()
-            } else {
-                c.contending_modules.last().unwrap_or(&"unknown".to_string()).clone()
-            }
-        } else {
-            c.contending_modules.last().unwrap_or(&"unknown".to_string()).clone()
-        };
+pub fn sift_conflicts(conflicts: Vec<ConflictEntry>, table: &WinnowingTable) -> Vec<ChaffConflict> {
+    conflicts
+        .into_iter()
+        .map(|c| {
+            let path_str = format!("/{}/{}", c.partition, c.relative_path);
+            let forced_module = table.get_preferred_module(Path::new(&path_str));
 
-        ChaffConflict {
-            path: PathBuf::from(path_str),
-            contenders: c.contending_modules,
-            selected,
-            is_forced: forced_module.is_some(),
-        }
-    }).collect()
+            let selected = if let Some(forced) = &forced_module {
+                if c.contending_modules.contains(forced) {
+                    forced.clone()
+                } else {
+                    c.contending_modules
+                        .last()
+                        .unwrap_or(&"unknown".to_string())
+                        .clone()
+                }
+            } else {
+                c.contending_modules
+                    .last()
+                    .unwrap_or(&"unknown".to_string())
+                    .clone()
+            };
+
+            ChaffConflict {
+                path: PathBuf::from(path_str),
+                contenders: c.contending_modules,
+                selected,
+                is_forced: forced_module.is_some(),
+            }
+        })
+        .collect()
 }

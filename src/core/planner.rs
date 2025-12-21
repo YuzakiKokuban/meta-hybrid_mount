@@ -1,11 +1,19 @@
-use std::collections::{HashMap, HashSet};
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    path::{Path, PathBuf},
+};
+
 use anyhow::Result;
 use rayon::prelude::*;
 use serde::Serialize;
 use walkdir::WalkDir;
-use crate::{conf::config, defs, core::inventory::{Module, MountMode}};
+
+use crate::{
+    conf::config,
+    core::inventory::{Module, MountMode},
+    defs,
+};
 
 #[derive(Debug, Clone)]
 pub struct OverlayOperation {
@@ -45,20 +53,24 @@ pub struct ConflictReport {
 
 impl MountPlan {
     pub fn analyze_conflicts(&self) -> ConflictReport {
-        let mut conflicts: Vec<ConflictEntry> = self.overlay_ops
+        let mut conflicts: Vec<ConflictEntry> = self
+            .overlay_ops
             .par_iter()
             .flat_map(|op| {
                 let mut local_conflicts = Vec::new();
                 let mut file_map: HashMap<String, Vec<String>> = HashMap::new();
-                
+
                 for layer_path in &op.lowerdirs {
-                    let module_id = layer_path.parent()
+                    let module_id = layer_path
+                        .parent()
                         .and_then(|p| p.file_name())
                         .map(|s| s.to_string_lossy().to_string())
                         .unwrap_or_else(|| "UNKNOWN".into());
-                    
+
                     for entry in WalkDir::new(layer_path).min_depth(1).into_iter().flatten() {
-                        if !entry.file_type().is_file() { continue; }
+                        if !entry.file_type().is_file() {
+                            continue;
+                        }
                         if let Ok(rel) = entry.path().strip_prefix(layer_path) {
                             let rel_str = rel.to_string_lossy().to_string();
                             file_map.entry(rel_str).or_default().push(module_id.clone());
@@ -80,7 +92,8 @@ impl MountPlan {
             .collect();
 
         conflicts.sort_by(|a, b| {
-            a.partition.cmp(&b.partition)
+            a.partition
+                .cmp(&b.partition)
                 .then_with(|| a.relative_path.cmp(&b.relative_path))
         });
 
@@ -88,7 +101,10 @@ impl MountPlan {
     }
 
     pub fn print_visuals(&self) {
-        if self.overlay_ops.is_empty() && self.magic_module_paths.is_empty() && self.hymo_ops.is_empty() {
+        if self.overlay_ops.is_empty()
+            && self.magic_module_paths.is_empty()
+            && self.hymo_ops.is_empty()
+        {
             log::info!(">> Empty plan. Standby mode.");
             return;
         }
@@ -106,20 +122,26 @@ impl MountPlan {
         if !self.overlay_ops.is_empty() {
             log::info!("[OverlayFS Fusion Sequence]");
             for (i, op) in self.overlay_ops.iter().enumerate() {
-                let is_last_op = i == self.overlay_ops.len() - 1 && self.magic_module_paths.is_empty();
+                let is_last_op =
+                    i == self.overlay_ops.len() - 1 && self.magic_module_paths.is_empty();
                 let branch = if is_last_op { "╰──" } else { "├──" };
-                
+
                 log::info!("{} [Target: {}] {}", branch, op.partition_name, op.target);
-                
+
                 let prefix = if is_last_op { "    " } else { "│   " };
                 for (j, layer) in op.lowerdirs.iter().enumerate() {
                     let is_last_layer = j == op.lowerdirs.len() - 1;
-                    let sub_branch = if is_last_layer { "╰──" } else { "├──" };
-                    let mod_name = layer.parent()
+                    let sub_branch = if is_last_layer {
+                        "╰──"
+                    } else {
+                        "├──"
+                    };
+                    let mod_name = layer
+                        .parent()
                         .and_then(|p| p.file_name())
                         .map(|n| n.to_string_lossy())
                         .unwrap_or_else(|| "UNKNOWN".into());
-                        
+
                     log::info!("{}{} [Layer] {}", prefix, sub_branch, mod_name);
                 }
             }
@@ -130,7 +152,8 @@ impl MountPlan {
             for (i, path) in self.magic_module_paths.iter().enumerate() {
                 let is_last = i == self.magic_module_paths.len() - 1;
                 let branch = if is_last { "╰──" } else { "├──" };
-                let mod_name = path.file_name()
+                let mod_name = path
+                    .file_name()
                     .map(|n| n.to_string_lossy())
                     .unwrap_or_else(|| "UNKNOWN".into());
                 log::info!("{} [Bind] {}", branch, mod_name);
@@ -147,12 +170,12 @@ struct ModuleContribution {
 }
 
 pub fn generate(
-    config: &config::Config, 
-    modules: &[Module], 
-    storage_root: &Path
+    config: &config::Config,
+    modules: &[Module],
+    storage_root: &Path,
 ) -> Result<MountPlan> {
     let mut plan = MountPlan::default();
-    
+
     let mut target_partitions = defs::BUILTIN_PARTITIONS.to_vec();
     target_partitions.extend(config.partitions.iter().map(|s| s.as_str()));
     let contributions: Vec<Option<ModuleContribution>> = modules
@@ -162,8 +185,10 @@ pub fn generate(
             if !content_path.exists() {
                 content_path = module.source_path.clone();
             }
-            
-            if !content_path.exists() { return None; }
+
+            if !content_path.exists() {
+                return None;
+            }
 
             let mut contrib = ModuleContribution {
                 id: module.id.clone(),
@@ -177,15 +202,19 @@ pub fn generate(
             if let Ok(entries) = fs::read_dir(&content_path) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if !path.is_dir() { continue; }
-                    
+                    if !path.is_dir() {
+                        continue;
+                    }
+
                     let dir_name = entry.file_name().to_string_lossy().to_string();
-                    
+
                     if !target_partitions.contains(&dir_name.as_str()) {
                         continue;
                     }
 
-                    if !has_files(&path) { continue; }
+                    if !has_files(&path) {
+                        continue;
+                    }
 
                     let mode = module.rules.get_mode(&dir_name);
 
@@ -193,7 +222,7 @@ pub fn generate(
                         MountMode::Overlay => {
                             contrib.overlays.push((dir_name, path));
                             has_any_action = true;
-                        },
+                        }
                         MountMode::HymoFs => {
                             let target_base = PathBuf::from("/").join(&dir_name);
                             contrib.hymo_ops.push(HymoOperation {
@@ -202,11 +231,11 @@ pub fn generate(
                                 target: target_base,
                             });
                             has_any_action = true;
-                        },
+                        }
                         MountMode::Magic => {
                             contrib.magic_path = Some(content_path.clone());
                             has_any_action = true;
-                        },
+                        }
                         MountMode::Ignore => {
                             log::debug!("Ignoring {}/{} per rule", module.id, dir_name);
                         }
@@ -214,7 +243,11 @@ pub fn generate(
                 }
             }
 
-            if has_any_action { Some(contrib) } else { None }
+            if has_any_action {
+                Some(contrib)
+            } else {
+                None
+            }
         })
         .collect();
     let mut overlay_groups: HashMap<String, Vec<PathBuf>> = HashMap::new();
@@ -242,14 +275,14 @@ pub fn generate(
     for (part, layers) in overlay_groups {
         let initial_target_path = format!("/{}", part);
         let target_path_obj = Path::new(&initial_target_path);
-        
+
         let resolved_target = if target_path_obj.exists() {
-             match target_path_obj.canonicalize() {
-                 Ok(p) => p,
-                 Err(_) => continue,
-             }
+            match target_path_obj.canonicalize() {
+                Ok(p) => p,
+                Err(_) => continue,
+            }
         } else {
-             continue;
+            continue;
         };
 
         if !resolved_target.is_dir() {
@@ -264,11 +297,11 @@ pub fn generate(
     }
 
     plan.magic_module_paths = magic_paths.into_iter().collect();
-    
+
     plan.overlay_module_ids = overlay_ids.into_iter().collect();
     plan.magic_module_ids = magic_ids.into_iter().collect();
     plan.hymo_module_ids = hymo_ids.into_iter().collect();
-    
+
     plan.overlay_module_ids.sort();
     plan.magic_module_ids.sort();
     plan.hymo_module_ids.sort();

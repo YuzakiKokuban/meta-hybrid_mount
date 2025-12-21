@@ -1,32 +1,31 @@
 use std::{
-    fs::{self, DirEntry, create_dir, create_dir_all, read_dir, read_link},
-    os::unix::fs::{MetadataExt, symlink},
-    path::{Path, PathBuf},
     collections::hash_map::Entry,
     collections::{HashMap, HashSet},
+    fs::{self, create_dir, create_dir_all, read_dir, read_link, DirEntry},
+    os::unix::fs::{symlink, MetadataExt},
+    path::{Path, PathBuf},
 };
-use anyhow::{Context, Result, bail};
+
+use anyhow::{bail, Context, Result};
 use rayon::prelude::*;
 use rustix::{
-    fs::{Gid, Mode, Uid, chmod, chown},
+    fs::{chmod, chown, Gid, Mode, Uid},
     mount::{
-        MountFlags, MountPropagationFlags, UnmountFlags, mount, mount_bind, mount_change,
-        mount_move, mount_remount, unmount,
+        mount, mount_bind, mount_change, mount_move, mount_remount, unmount, MountFlags,
+        MountPropagationFlags, UnmountFlags,
     },
 };
+
 use crate::{
     defs::{DISABLE_FILE_NAME, REMOVE_FILE_NAME, SKIP_MOUNT_FILE_NAME},
     mount::node::{Node, NodeFileType},
     utils::{ensure_dir_exists, lgetfilecon, lsetfilecon},
 };
+
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use crate::utils::send_unmountable;
-const ROOT_PARTITIONS: [&str; 4] = [
-    "vendor",
-    "system_ext",
-    "product",
-    "odm",
-];
+
+const ROOT_PARTITIONS: [&str; 4] = ["vendor", "system_ext", "product", "odm"];
 fn merge_nodes(high: &mut Node, low: Node) {
     if high.module_path.is_none() {
         high.module_path = low.module_path;
@@ -45,9 +44,9 @@ fn merge_nodes(high: &mut Node, low: Node) {
     }
 }
 fn process_module(
-    path: &Path, 
+    path: &Path,
     extra_partitions: &[String],
-    exclusion_list: Option<&HashSet<String>>
+    exclusion_list: Option<&HashSet<String>>,
 ) -> Result<(Node, Node)> {
     let mut root = Node::new_root("");
     let mut system = Node::new_root("system");
@@ -76,7 +75,9 @@ fn process_module(
         }
         let mod_part = path.join(partition);
         if mod_part.is_dir() {
-            let node = system.children.entry(partition.to_string())
+            let node = system
+                .children
+                .entry(partition.to_string())
                 .or_insert_with(|| Node::new_root(partition));
             if node.file_type == NodeFileType::Symlink {
                 node.file_type = NodeFileType::Directory;
@@ -98,7 +99,9 @@ fn process_module(
             let name = partition.clone();
             let mod_part = path.join(partition);
             if mod_part.is_dir() {
-                let node = root.children.entry(name)
+                let node = root
+                    .children
+                    .entry(name)
                     .or_insert_with(|| Node::new_root(partition));
                 node.collect_module_files(&mod_part)?;
             }
@@ -106,7 +109,9 @@ fn process_module(
             let name = partition.clone();
             let mod_part = path.join(partition);
             if mod_part.is_dir() {
-                let node = root.children.entry(name)
+                let node = root
+                    .children
+                    .entry(name)
                     .or_insert_with(|| Node::new_root(partition));
                 node.collect_module_files(&mod_part)?;
             }
@@ -115,11 +120,12 @@ fn process_module(
     Ok((root, system))
 }
 fn collect_module_files(
-    module_paths: &[PathBuf], 
+    module_paths: &[PathBuf],
     extra_partitions: &[String],
-    exclusions: &HashMap<PathBuf, HashSet<String>>
+    exclusions: &HashMap<PathBuf, HashSet<String>>,
 ) -> Result<Option<Node>> {
-    let (mut final_root, mut final_system) = module_paths.par_iter()
+    let (mut final_root, mut final_system) = module_paths
+        .par_iter()
         .map(|path| {
             let exclusion = exclusions.get(path);
             process_module(path, extra_partitions, exclusion)
@@ -132,7 +138,7 @@ fn collect_module_files(
                 merge_nodes(&mut r_a, r_b);
                 merge_nodes(&mut s_a, s_b);
                 Ok((r_a, s_a))
-            }
+            },
         )?;
     let has_content = !final_root.children.is_empty() || !final_system.children.is_empty();
     if has_content {
@@ -152,7 +158,9 @@ fn collect_module_files(
                 }
             }
         }
-        final_root.children.insert("system".to_string(), final_system);
+        final_root
+            .children
+            .insert("system".to_string(), final_system);
         Ok(Some(final_root))
     } else {
         Ok(None)
@@ -476,7 +484,14 @@ pub fn mount_partitions(
         }
         let tmp_dir = tmp_path.join("workdir");
         ensure_dir_exists(&tmp_dir)?;
-        mount(mount_source, &tmp_dir, "tmpfs", MountFlags::empty(), None::<&std::ffi::CStr>).context("mount tmp")?;
+        mount(
+            mount_source,
+            &tmp_dir,
+            "tmpfs",
+            MountFlags::empty(),
+            None::<&std::ffi::CStr>,
+        )
+        .context("mount tmp")?;
         mount_change(&tmp_dir, MountPropagationFlags::PRIVATE).context("make tmp private")?;
         let result = {
             MagicMount::new(

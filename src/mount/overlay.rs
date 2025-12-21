@@ -1,13 +1,18 @@
 use anyhow::{Context, Result};
 use log::{info, warn};
-use std::path::{Path, PathBuf};
-use std::fs;
-use std::os::fd::AsRawFd;
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::ffi::CString;
+use std::{
+    ffi::CString,
+    fs,
+    os::fd::AsRawFd,
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
+
+use crate::{
+    defs::{KSU_OVERLAY_SOURCE, RUN_DIR},
+    utils::send_unmountable,
+};
 use rustix::{fd::AsFd, fs::CWD, mount::*};
-use crate::defs::{KSU_OVERLAY_SOURCE, RUN_DIR};
-use crate::utils::send_unmountable;
 
 const PAGE_LIMIT: usize = 4000;
 
@@ -29,14 +34,14 @@ impl Drop for StagedMountGuard {
 
 fn get_overlay_features() -> String {
     let mut features = String::new();
-    
+
     if Path::new("/sys/module/overlay/parameters/redirect_dir").exists() {
         features.push_str(",redirect_dir=on");
     }
-    
+
     if Path::new("/sys/module/overlay/parameters/metacopy").exists() {
         if !features.contains("redirect_dir") {
-             features.push_str(",redirect_dir=on");
+            features.push_str(",redirect_dir=on");
         }
         features.push_str(",metacopy=on");
     }
@@ -64,7 +69,7 @@ pub fn mount_overlayfs(
         upperdir.clone(),
         workdir.clone(),
         dest.as_ref(),
-        disable_umount
+        disable_umount,
     ) {
         Ok(_) => Ok(()),
         Err(e) => {
@@ -114,10 +119,10 @@ fn mount_overlayfs_staged(
         mounts: Vec::new(),
         committed: false,
     };
-    
+
     for (i, batch) in batches.iter().rev().enumerate() {
-        let is_last_layer = i == batches.len() - 1; 
-        
+        let is_last_layer = i == batches.len() - 1;
+
         let target_path = if is_last_layer {
             dest.as_ref().to_path_buf()
         } else {
@@ -125,7 +130,7 @@ fn mount_overlayfs_staged(
                 .duration_since(UNIX_EPOCH)
                 .context("System time is before UNIX EPOCH")?
                 .as_nanos();
-                
+
             let stage_dir = staging_root.join(format!("stage_{}_{}", timestamp, i));
             fs::create_dir_all(&stage_dir)
                 .with_context(|| format!("Failed to create stage dir {:?}", stage_dir))?;
@@ -139,13 +144,7 @@ fn mount_overlayfs_staged(
             .collect::<Vec<_>>()
             .join(":");
 
-        do_mount_overlay(
-            &lowerdir_str,
-            None,
-            None,
-            &target_path,
-            disable_umount
-        )?;
+        do_mount_overlay(&lowerdir_str, None, None, &target_path, disable_umount)?;
 
         if !is_last_layer {
             guard.mounts.push(target_path.clone());
@@ -176,9 +175,9 @@ fn do_mount_overlay(
     let result = (|| {
         let fs = fsopen("overlay", FsOpenFlags::FSOPEN_CLOEXEC)?;
         let fs = fs.as_fd();
-        
+
         fsconfig_set_string(fs, "lowerdir", lowerdir_config)?;
-        
+
         if let (Some(upperdir), Some(workdir)) = (&upperdir_s, &workdir_s) {
             fsconfig_set_string(fs, "upperdir", upperdir)?;
             fsconfig_set_string(fs, "workdir", workdir)?;
@@ -190,10 +189,10 @@ fn do_mount_overlay(
         if extra_features.contains("metacopy") {
             let _ = fsconfig_set_string(fs, "metacopy", "on");
         }
-        
+
         fsconfig_set_string(fs, "source", KSU_OVERLAY_SOURCE)?;
         fsconfig_create(fs)?;
-        
+
         let mount = fsmount(fs, FsMountFlags::FSMOUNT_CLOEXEC, MountAttrFlags::empty())?;
         move_mount(
             mount.as_fd(),
@@ -209,19 +208,19 @@ fn do_mount_overlay(
         if let (Some(upperdir), Some(workdir)) = (upperdir_s, workdir_s) {
             data = format!("{data},upperdir={upperdir},workdir={workdir}");
         }
-        
+
         data.push_str(&extra_features);
 
-        let data_c = CString::new(data)
-            .context("Invalid string for mount data")?;
-            
+        let data_c = CString::new(data).context("Invalid string for mount data")?;
+
         mount(
             KSU_OVERLAY_SOURCE,
             dest.as_ref(),
             "overlay",
             MountFlags::empty(),
             Some(data_c.as_c_str()),
-        ).with_context(|| format!("Legacy mount failed (fsopen also failed: {})", fsopen_err))?;
+        )
+        .with_context(|| format!("Legacy mount failed (fsopen also failed: {})", fsopen_err))?;
     }
 
     if !disable_umount {
@@ -231,14 +230,19 @@ fn do_mount_overlay(
     Ok(())
 }
 
-pub fn bind_mount(from: impl AsRef<Path>, to: impl AsRef<Path>, disable_umount: bool) -> Result<()> {
+pub fn bind_mount(
+    from: impl AsRef<Path>,
+    to: impl AsRef<Path>,
+    disable_umount: bool,
+) -> Result<()> {
     let tree = open_tree(
         CWD,
         from.as_ref(),
         OpenTreeFlags::OPEN_TREE_CLOEXEC
             | OpenTreeFlags::OPEN_TREE_CLONE
             | OpenTreeFlags::AT_RECURSIVE,
-    ).with_context(|| format!("open_tree failed for {}", from.as_ref().display()))?;
+    )
+    .with_context(|| format!("open_tree failed for {}", from.as_ref().display()))?;
 
     move_mount(
         tree.as_fd(),
@@ -246,7 +250,8 @@ pub fn bind_mount(from: impl AsRef<Path>, to: impl AsRef<Path>, disable_umount: 
         CWD,
         to.as_ref(),
         MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH,
-    ).with_context(|| format!("move_mount failed to {}", to.as_ref().display()))?;
+    )
+    .with_context(|| format!("move_mount failed to {}", to.as_ref().display()))?;
 
     if !disable_umount {
         let _ = send_unmountable(to.as_ref());
@@ -288,8 +293,18 @@ fn mount_overlay_child(
         return Ok(());
     }
 
-    if let Err(e) = mount_overlayfs(&lower_dirs, stock_root, None, None, mount_point, disable_umount) {
-        warn!("failed to overlay child {mount_point}: {:#}, fallback to bind mount", e);
+    if let Err(e) = mount_overlayfs(
+        &lower_dirs,
+        stock_root,
+        None,
+        None,
+        mount_point,
+        disable_umount,
+    ) {
+        warn!(
+            "failed to overlay child {mount_point}: {:#}, fallback to bind mount",
+            e
+        );
         bind_mount(stock_root, mount_point, disable_umount)?;
     }
     Ok(())
@@ -305,21 +320,34 @@ pub fn mount_overlay(
 ) -> Result<()> {
     let root_file = fs::File::open(target_root)
         .with_context(|| format!("failed to open target root {}", target_root))?;
-    
+
     let stock_root = format!("/proc/self/fd/{}", root_file.as_raw_fd());
-    
-    mount_overlayfs(module_roots, &stock_root, upperdir, workdir, target_root, disable_umount)
-        .with_context(|| format!("mount overlayfs for root {target_root} failed"))?;
+
+    mount_overlayfs(
+        module_roots,
+        &stock_root,
+        upperdir,
+        workdir,
+        target_root,
+        disable_umount,
+    )
+    .with_context(|| format!("mount overlayfs for root {target_root} failed"))?;
 
     for mount_point in child_mounts {
         let relative = mount_point.replacen(target_root, "", 1);
         let stock_root_relative = format!("{}{}", stock_root, relative);
-        
+
         if !Path::new(&stock_root_relative).exists() {
             continue;
         }
 
-        if let Err(e) = mount_overlay_child(mount_point, &relative, module_roots, &stock_root_relative, disable_umount) {
+        if let Err(e) = mount_overlay_child(
+            mount_point,
+            &relative,
+            module_roots,
+            &stock_root_relative,
+            disable_umount,
+        ) {
             warn!("failed to restore child mount {mount_point}: {:#}", e);
         }
     }

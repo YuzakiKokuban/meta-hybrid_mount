@@ -1,5 +1,7 @@
-use std::{collections::HashMap, fs::FileType, path::PathBuf, fmt};
+use std::{collections::HashMap, fmt, fs::FileType, path::PathBuf};
+
 use crate::core::modules::ModuleFile;
+
 #[derive(PartialEq, Eq, Hash, Clone, Debug, Copy)]
 pub enum NodeFileType {
     RegularFile,
@@ -46,19 +48,47 @@ impl fmt::Debug for Node {
             is_last: bool,
             is_root: bool,
         ) -> fmt::Result {
-            let connector = if is_root { "" } else if is_last { "└── " } else { "├── " };
-            let name = if node.name.is_empty() { "/" } else { &node.name };
+            let connector = if is_root {
+                ""
+            } else if is_last {
+                "└── "
+            } else {
+                "├── "
+            };
+            let name = if node.name.is_empty() {
+                "/"
+            } else {
+                &node.name
+            };
             let mut flags = Vec::new();
-            if node.replace { flags.push("REPLACE"); }
-            if node.skip { flags.push("SKIP"); }
-            let flag_str = if flags.is_empty() { String::new() } else { format!(" [{}]", flags.join("|")) };
+            if node.replace {
+                flags.push("REPLACE");
+            }
+            if node.skip {
+                flags.push("SKIP");
+            }
+            let flag_str = if flags.is_empty() {
+                String::new()
+            } else {
+                format!(" [{}]", flags.join("|"))
+            };
             let source_str = if let Some(p) = &node.module_path {
                 format!(" -> {}", p.display())
             } else {
                 String::new()
             };
-            writeln!(f, "{}{}{} [{}]{}{}", prefix, connector, name, node.file_type, flag_str, source_str)?;
-            let child_prefix = if is_root { "" } else if is_last { "    " } else { "│   " };
+            writeln!(
+                f,
+                "{}{}{} [{}]{}{}",
+                prefix, connector, name, node.file_type, flag_str, source_str
+            )?;
+            let child_prefix = if is_root {
+                ""
+            } else if is_last {
+                "    "
+            } else {
+                "│   "
+            };
             let new_prefix = format!("{}{}", prefix, child_prefix);
             let mut children: Vec<_> = node.children.values().collect();
             children.sort_by(|a, b| a.name.cmp(&b.name));

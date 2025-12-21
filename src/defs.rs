@@ -11,9 +11,17 @@ pub const KSU_OVERLAY_SOURCE: &str = OVERLAY_SOURCE;
 #[allow(dead_code)]
 pub const SYSTEM_RW_DIR: &str = "/data/adb/meta-hybrid/rw";
 pub const MODULE_PROP_FILE: &str = "/data/adb/modules/meta-hybrid/module.prop";
-pub const MODULES_DIR: &str = "/data/adb/modules"; 
+pub const MODULES_DIR: &str = "/data/adb/modules";
 
-pub const BUILTIN_PARTITIONS: &[&str] = &["system", "vendor", "product", "system_ext", "odm", "oem", "apex"];
+pub const BUILTIN_PARTITIONS: &[&str] = &[
+    "system",
+    "vendor",
+    "product",
+    "system_ext",
+    "odm",
+    "oem",
+    "apex",
+];
 #[allow(dead_code)]
 pub const REPLACE_DIR_FILE_NAME: &str = ".replace";
 #[allow(dead_code)]

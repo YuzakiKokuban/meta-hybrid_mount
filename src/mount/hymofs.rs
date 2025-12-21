@@ -1,13 +1,18 @@
-use std::ffi::{CString, CStr};
-use std::fs::File;
-use std::os::unix::fs::{FileTypeExt, MetadataExt};
-use std::os::unix::io::AsRawFd;
-use std::path::Path;
+use std::{
+    ffi::{CStr, CString},
+    fs::File,
+    os::unix::{
+        fs::{FileTypeExt, MetadataExt},
+        io::AsRawFd,
+    },
+    path::Path,
+};
+
 use anyhow::{Context, Result};
 use log::{debug, warn};
-use walkdir::WalkDir;
-use nix::{ioctl_read, ioctl_readwrite, ioctl_write_ptr, ioctl_none};
+use nix::{ioctl_none, ioctl_read, ioctl_readwrite, ioctl_write_ptr};
 use serde::Serialize;
+use walkdir::WalkDir;
 
 const DEV_PATH: &str = "/dev/hymo_ctl";
 const HYMO_IOC_MAGIC: u8 = 0xE0;
@@ -103,29 +108,30 @@ impl HymoFs {
     pub fn clear() -> Result<()> {
         debug!("HymoFS: Clearing all rules");
         let file = Self::open_dev()?;
-        unsafe { ioc_clear_all(file.as_raw_fd()) }
-            .context("HymoFS clear failed")?;
+        unsafe { ioc_clear_all(file.as_raw_fd()) }.context("HymoFS clear failed")?;
 
         let debug_val: i32 = 1;
         unsafe { ioc_set_debug(file.as_raw_fd(), &debug_val) }.ok();
-        
+
         Ok(())
     }
 
     pub fn add_rule(src: &str, target: &str, type_val: i32) -> Result<()> {
-        debug!("HymoFS: ADD_RULE src='{}' target='{}' type={}", src, target, type_val);
+        debug!(
+            "HymoFS: ADD_RULE src='{}' target='{}' type={}",
+            src, target, type_val
+        );
         let file = Self::open_dev()?;
         let c_src = CString::new(src)?;
         let c_target = CString::new(target)?;
-        
+
         let arg = HymoIoctlArg {
             src: c_src.as_ptr(),
             target: c_target.as_ptr(),
             type_: type_val as std::ffi::c_int,
         };
 
-        unsafe { ioc_add_rule(file.as_raw_fd(), &arg) }
-            .context("HymoFS add_rule failed")?;
+        unsafe { ioc_add_rule(file.as_raw_fd(), &arg) }.context("HymoFS add_rule failed")?;
         Ok(())
     }
 
@@ -134,15 +140,14 @@ impl HymoFs {
         debug!("HymoFS: DEL_RULE src='{}'", src);
         let file = Self::open_dev()?;
         let c_src = CString::new(src)?;
-        
+
         let arg = HymoIoctlArg {
             src: c_src.as_ptr(),
             target: std::ptr::null(),
             type_: 0,
         };
 
-        unsafe { ioc_del_rule(file.as_raw_fd(), &arg) }
-            .context("HymoFS delete_rule failed")?;
+        unsafe { ioc_del_rule(file.as_raw_fd(), &arg) }.context("HymoFS delete_rule failed")?;
         Ok(())
     }
 
@@ -150,15 +155,14 @@ impl HymoFs {
         debug!("HymoFS: HIDE_RULE path='{}'", path);
         let file = Self::open_dev()?;
         let c_path = CString::new(path)?;
-        
+
         let arg = HymoIoctlArg {
             src: c_path.as_ptr(),
             target: std::ptr::null(),
             type_: 0,
         };
 
-        unsafe { ioc_hide_rule(file.as_raw_fd(), &arg) }
-            .context("HymoFS hide_path failed")?;
+        unsafe { ioc_hide_rule(file.as_raw_fd(), &arg) }.context("HymoFS hide_path failed")?;
         Ok(())
     }
 
@@ -208,7 +212,9 @@ impl HymoFs {
 
         for line in raw_info.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.is_empty() { continue; }
+            if parts.is_empty() {
+                continue;
+            }
 
             match parts[0] {
                 "HymoFS" => {
@@ -221,7 +227,7 @@ impl HymoFs {
                             }
                         }
                     }
-                },
+                }
                 "add" => {
                     if parts.len() >= 4 {
                         status.rules.redirects.push(HymoRuleRedirect {
@@ -230,22 +236,22 @@ impl HymoFs {
                             type_: parts[3].parse().unwrap_or(0),
                         });
                     }
-                },
+                }
                 "hide" => {
                     if parts.len() >= 2 {
                         status.rules.hides.push(parts[1].to_string());
                     }
-                },
+                }
                 "inject" => {
                     if parts.len() >= 2 {
                         status.rules.injects.push(parts[1].to_string());
                     }
-                },
+                }
                 "hide_xattr_sb" => {
                     if parts.len() >= 2 {
                         status.rules.xattr_sbs.push(parts[1].to_string());
                     }
-                },
+                }
                 _ => {}
             }
         }
@@ -258,7 +264,11 @@ impl HymoFs {
             return Ok(());
         }
 
-        debug!("HymoFS: Scanning module dir: {} -> {}", module_dir.display(), target_base.display());
+        debug!(
+            "HymoFS: Scanning module dir: {} -> {}",
+            module_dir.display(),
+            target_base.display()
+        );
 
         let mut pending_ops = Vec::new();
 
@@ -295,7 +305,7 @@ impl HymoFs {
                 if let Err(e) = Self::add_rule(
                     &target_path.to_string_lossy(),
                     &current_path.to_string_lossy(),
-                    0 
+                    0,
                 ) {
                     warn!("Failed to add rule for {}: {}", target_path.display(), e);
                 }
@@ -303,7 +313,7 @@ impl HymoFs {
                 warn!("Failed to hide path {}: {}", target_path.display(), e);
             }
         }
-        
+
         Ok(())
     }
 
@@ -338,7 +348,11 @@ impl HymoFs {
                 if let Ok(metadata) = entry.metadata() {
                     if metadata.rdev() == 0 {
                         if let Err(e) = Self::delete_rule(&target_path.to_string_lossy()) {
-                            warn!("Failed to delete hidden rule for {}: {}", target_path.display(), e);
+                            warn!(
+                                "Failed to delete hidden rule for {}: {}",
+                                target_path.display(),
+                                e
+                            );
                         }
                     }
                 }
@@ -351,16 +365,14 @@ impl HymoFs {
     pub fn set_debug(enable: bool) -> Result<()> {
         let file = Self::open_dev()?;
         let val: i32 = if enable { 1 } else { 0 };
-        unsafe { ioc_set_debug(file.as_raw_fd(), &val) }
-            .context("HymoFS set_debug failed")?;
+        unsafe { ioc_set_debug(file.as_raw_fd(), &val) }.context("HymoFS set_debug failed")?;
         Ok(())
     }
 
     pub fn set_stealth(enable: bool) -> Result<()> {
         let file = Self::open_dev()?;
         let val: i32 = if enable { 1 } else { 0 };
-        unsafe { ioc_set_stealth(file.as_raw_fd(), &val) }
-            .context("HymoFS set_stealth failed")?;
+        unsafe { ioc_set_stealth(file.as_raw_fd(), &val) }.context("HymoFS set_stealth failed")?;
         Ok(())
     }
 
@@ -368,7 +380,7 @@ impl HymoFs {
         debug!("HymoFS: HIDE_XATTRS path='{}'", path);
         let file = Self::open_dev()?;
         let c_path = CString::new(path)?;
-        
+
         let arg = HymoIoctlArg {
             src: c_path.as_ptr(),
             target: std::ptr::null(),
@@ -382,8 +394,7 @@ impl HymoFs {
 
     pub fn reorder_mnt_id() -> Result<()> {
         let file = Self::open_dev()?;
-        unsafe { ioc_reorder_mnt_id(file.as_raw_fd()) }
-             .context("HymoFS reorder_mnt_id failed")?;
+        unsafe { ioc_reorder_mnt_id(file.as_raw_fd()) }.context("HymoFS reorder_mnt_id failed")?;
         Ok(())
     }
 }
