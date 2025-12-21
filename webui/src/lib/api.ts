@@ -52,7 +52,6 @@ function stringToHex(str: string): string {
   return hex;
 }
 
-// Define the API interface explicitly
 interface AppAPI {
   loadConfig: () => Promise<AppConfig>;
   saveConfig: (config: AppConfig) => Promise<void>;
@@ -169,6 +168,9 @@ const RealAPI: AppAPI = {
           const state = JSON.parse(outState);
           info.mountBase = state.mount_point || 'Unknown';
           info.activeMounts = state.active_mounts || [];
+          if (state.zygisksu_enforce !== undefined) {
+             info.zygisksuEnforce = state.zygisksu_enforce ? '1' : '0';
+          }
         } catch {}
       }
       return info;
@@ -243,7 +245,6 @@ const RealAPI: AppAPI = {
   getGranaryList: async (): Promise<Silo[]> => {
     if (!ksuExec) return [];
     try {
-        // [FIX] Added --action flag
         const { errno, stdout } = await ksuExec(`${PATHS.BINARY} hymo-action --action granary-list`);
         if (errno === 0 && stdout) return JSON.parse(stdout);
     } catch {}
@@ -251,28 +252,24 @@ const RealAPI: AppAPI = {
   },
   createSilo: async (reason: string): Promise<void> => {
     if (!ksuExec) return;
-    // [FIX] Added --action flag and fixed formatting
     const cmd = `${PATHS.BINARY} hymo-action --action granary-create --value "${reason}"`;
     const { errno, stderr } = await ksuExec(cmd);
     if (errno !== 0) throw new Error(stderr);
   },
   deleteSilo: async (siloId: string): Promise<void> => {
     if (!ksuExec) return;
-    // [FIX] Added --action flag
     const cmd = `${PATHS.BINARY} hymo-action --action granary-delete --value "${siloId}"`;
     const { errno, stderr } = await ksuExec(cmd);
     if (errno !== 0) throw new Error(stderr);
   },
   restoreSilo: async (siloId: string): Promise<void> => {
     if (!ksuExec) return;
-    // [FIX] Added --action flag
     const cmd = `${PATHS.BINARY} hymo-action --action granary-restore --value "${siloId}"`;
     const { errno, stderr } = await ksuExec(cmd);
     if (errno !== 0) throw new Error(stderr);
   },
   setWinnowingRule: async (path: string, moduleId: string): Promise<void> => {
     if (!ksuExec) return;
-    // [FIX] Added --action flag
     const cmd = `${PATHS.BINARY} hymo-action --action winnow-set --value "${path}:${moduleId}"`;
     const { errno, stderr } = await ksuExec(cmd);
     if (errno !== 0) throw new Error(stderr);

@@ -111,11 +111,6 @@ pub fn init_logging(verbose: bool, log_path: &Path) -> Result<WorkerGuard> {
     Ok(guard)
 }
 
-/// Validate `module_id` format and security
-/// Module ID must match: ^[a-zA-Z][a-zA-Z0-9._-]+$
-/// - Must start with a letter (a-zA-Z)
-/// - Followed by one or more alphanumeric, dot, underscore, or hyphen characters
-/// - Minimum length: 2 characters
 pub fn validate_module_id(module_id: &str) -> Result<()> {
     let re = MODULE_ID_REGEX
         .get_or_init(|| Regex::new(r"^[a-zA-Z][a-zA-Z0-9._-]+$").expect("Invalid Regex pattern"));
@@ -125,6 +120,12 @@ pub fn validate_module_id(module_id: &str) -> Result<()> {
     } else {
         bail!("Invalid module ID: '{module_id}'. Must match /^[a-zA-Z][a-zA-Z0-9._-]+$/")
     }
+}
+
+pub fn check_zygisksu_enforce_status() -> bool {
+    std::fs::read_to_string("/data/adb/zygisksu/denylist_enforce")
+        .map(|s| s.trim() != "0")
+        .unwrap_or(false)
 }
 
 pub fn lsetfilecon<P: AsRef<Path>>(path: P, con: &str) -> Result<()> {
@@ -227,7 +228,6 @@ pub fn is_mounted<P: AsRef<Path>>(path: P) -> bool {
         }
     }
 
-    // Fallback if procfs fails for some reason
     if let Ok(content) = fs::read_to_string("/proc/mounts") {
         for line in content.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
@@ -469,11 +469,6 @@ where
     unsafe {
         ksu_add_try_umount(fd, &cmd)?;
     }
-    Ok(())
-}
-
-#[cfg(not(any(target_os = "linux", target_os = "android")))]
-pub fn send_unmountable<P>(_target: P) -> Result<()> {
     Ok(())
 }
 

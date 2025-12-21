@@ -50,16 +50,9 @@ fn load_config(cli: &Cli) -> Result<Config> {
     }
 }
 
-fn check_zygisksu_enforce_status() -> bool {
-    std::fs::read_to_string("/data/adb/zygisksu/denylist_enforce")
-        .map(|s| s.trim() != "0")
-        .unwrap_or(false)
-}
-
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // 1. Dispatch CLI Commands (Non-boot operations)
     if let Some(command) = &cli.command {
         match command {
             Commands::GenConfig { output } => cli_handlers::handle_gen_config(output)?,
@@ -80,7 +73,6 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // 2. Main Boot / Mount Sequence
     let mut config = load_config(&cli)?;
     config.merge_with_cli(
         cli.moduledir.clone(),
@@ -90,15 +82,13 @@ fn main() -> Result<()> {
         cli.dry_run,
     );
 
-    // 3. Safety Protocols
     if !config.dry_run {
         if let Err(e) = granary::engage_ratoon_protocol() {
             log::error!("Failed to engage Ratoon Protocol: {}", e);
         }
     }
 
-    // Compatibility Checks
-    if check_zygisksu_enforce_status() {
+    if utils::check_zygisksu_enforce_status() {
         if config.allow_umount_coexistence {
             if config.verbose {
                 println!(">> ZygiskSU Enforce!=0 detected, but Umount Coexistence enabled. Respecting user config.");
@@ -111,7 +101,6 @@ fn main() -> Result<()> {
         }
     }
 
-    // 4. Dry-Run / Simulation Mode
     if config.dry_run {
         env_logger::builder()
             .filter_level(if config.verbose {
@@ -182,7 +171,6 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // 5. Execution Mode
     let _log_guard = utils::init_logging(config.verbose, Path::new(defs::DAEMON_LOG_FILE))
         .context("Failed to initialize logging")?;
 
@@ -204,12 +192,10 @@ fn main() -> Result<()> {
     let mnt_base = PathBuf::from(defs::FALLBACK_CONTENT_DIR);
     let img_path = Path::new(defs::BASE_DIR).join("modules.img");
 
-    // Create pre-mount backup
     if let Err(e) = granary::create_silo(&config, "Boot Backup", "Automatic Pre-Mount") {
         log::warn!("Granary: Failed to create boot snapshot: {}", e);
     }
 
-    // Engage Engine
     OryzaEngine::new(config)
         .init_storage(&mnt_base, &img_path)
         .context("Failed to initialize storage")?

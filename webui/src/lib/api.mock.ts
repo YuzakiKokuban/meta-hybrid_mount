@@ -126,7 +126,8 @@ export const MockAPI = {
       kernel: 'Linux localhost 5.15.0 #1 SMP PREEMPT',
       selinux: 'Enforcing',
       mountBase: '/data/adb/meta-hybrid/mnt',
-      activeMounts: ['system', 'product']
+      activeMounts: ['system', 'product'],
+      zygisksuEnforce: '1'
     };
   },
   async fetchSystemColor(): Promise<string | null> {

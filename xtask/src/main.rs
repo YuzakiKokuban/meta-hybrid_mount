@@ -1,12 +1,11 @@
-use std::{
-    env,
-    fs,
-    path::{Path, PathBuf},
-    process::Command,
-};
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use fs_extra::dir::{self, CopyOptions};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 use zip::{write::FileOptions, CompressionMethod};
 mod zip_ext;
 use crate::zip_ext::zip_create_from_directory_with_options;
@@ -72,7 +71,11 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     let root = project_root();
     match cli.command {
-        Commands::Build { release, skip_webui, arch } => {
+        Commands::Build {
+            release,
+            skip_webui,
+            arch,
+        } => {
             build_full(&root, release, skip_webui, arch)?;
         }
         Commands::Lint => {
@@ -92,9 +95,9 @@ fn project_root() -> PathBuf {
 
 fn run_clippy(root: &Path) -> Result<()> {
     println!(":: Running Clippy...");
-    
+
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
-    
+
     let status = Command::new(cargo)
         .current_dir(root)
         .args([
@@ -103,7 +106,8 @@ fn run_clippy(root: &Path) -> Result<()> {
             "--all-targets",
             "--all-features",
             "--",
-            "-D", "warnings"
+            "-D",
+            "warnings",
         ])
         .status()
         .context("Failed to run cargo clippy")?;
@@ -111,22 +115,29 @@ fn run_clippy(root: &Path) -> Result<()> {
     if !status.success() {
         anyhow::bail!("Clippy found issues! Please fix them before committing.");
     }
-    
+
     println!(":: Clippy checks passed!");
     Ok(())
 }
 
-fn build_full(root: &Path, release: bool, skip_webui: bool, target_arch: Option<Arch>) -> Result<()> {
+fn build_full(
+    root: &Path,
+    release: bool,
+    skip_webui: bool,
+    target_arch: Option<Arch>,
+) -> Result<()> {
     let output_dir = root.join("output");
     let stage_dir = output_dir.join("staging");
-    if output_dir.exists() { fs::remove_dir_all(&output_dir)?; }
+    if output_dir.exists() {
+        fs::remove_dir_all(&output_dir)?;
+    }
     fs::create_dir_all(&stage_dir)?;
     let version = get_version(root)?;
     if !skip_webui {
         println!(":: Building WebUI...");
         build_webui(root, &version)?;
     }
-    
+
     let archs_to_build = if let Some(selected) = target_arch {
         vec![selected]
     } else {
@@ -138,16 +149,17 @@ fn build_full(root: &Path, release: bool, skip_webui: bool, target_arch: Option<
         compile_core(root, release, arch)?;
         let bin_name = "meta-hybrid";
         let profile = if release { "release" } else { "debug" };
-        let src_bin = root.join("target")
+        let src_bin = root
+            .join("target")
             .join(arch.target())
             .join(profile)
             .join(bin_name);
         let stage_bin_dir = stage_dir.join("binaries").join(arch.android_abi());
         fs::create_dir_all(&stage_bin_dir)?;
         if src_bin.exists() {
-             fs::copy(&src_bin, stage_bin_dir.join(bin_name))?;
+            fs::copy(&src_bin, stage_bin_dir.join(bin_name))?;
         } else {
-             println!("Warning: Binary not found at {}", src_bin.display());
+            println!("Warning: Binary not found at {}", src_bin.display());
         }
     }
     println!(":: Copying module scripts...");
@@ -155,7 +167,9 @@ fn build_full(root: &Path, release: bool, skip_webui: bool, target_arch: Option<
     let options = CopyOptions::new().overwrite(true).content_only(true);
     dir::copy(&module_src, &stage_dir, &options)?;
     let gitignore = stage_dir.join(".gitignore");
-    if gitignore.exists() { fs::remove_file(gitignore)?; }
+    if gitignore.exists() {
+        fs::remove_file(gitignore)?;
+    }
     println!(":: Injecting version: {}", version);
     update_module_prop(&stage_dir.join("module.prop"), &version)?;
     println!(":: Creating Zip...");
@@ -163,11 +177,7 @@ fn build_full(root: &Path, release: bool, skip_webui: bool, target_arch: Option<
     let zip_options = FileOptions::default()
         .compression_method(CompressionMethod::Deflated)
         .compression_level(Some(9));
-    zip_create_from_directory_with_options(
-        &zip_file,
-        &stage_dir,
-        |_| zip_options,
-    )?;
+    zip_create_from_directory_with_options(&zip_file, &stage_dir, |_| zip_options)?;
     println!(":: Build Complete: {}", zip_file.display());
     Ok(())
 }
@@ -180,18 +190,23 @@ fn build_webui(root: &Path, version: &str) -> Result<()> {
         .current_dir(&webui_dir)
         .arg("install")
         .status()?;
-    if !status.success() { anyhow::bail!("npm install failed"); }
+    if !status.success() {
+        anyhow::bail!("npm install failed");
+    }
     let status = Command::new(npm)
         .current_dir(&webui_dir)
         .args(["run", "build"])
         .status()?;
-    if !status.success() { anyhow::bail!("npm run build failed"); }
+    if !status.success() {
+        anyhow::bail!("npm run build failed");
+    }
     Ok(())
 }
 
 fn generate_webui_constants(root: &Path, version: &str) -> Result<()> {
     let path = root.join("webui/src/lib/constants_gen.ts");
-    let content = format!(r#"
+    let content = format!(
+        r#"
 export const APP_VERSION = "{version}";
 export const RUST_PATHS = {{
   CONFIG: "/data/adb/meta-hybrid/config.toml",
@@ -201,7 +216,8 @@ export const RUST_PATHS = {{
   DAEMON_LOG: "/data/adb/meta-hybrid/daemon.log",
 }} as const;
 export const BUILTIN_PARTITIONS = ["system", "vendor", "product", "system_ext", "odm", "oem", "apex"] as const;
-"#);
+"#
+    );
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -260,7 +276,10 @@ fn compile_core(root: &Path, release: bool, arch: Arch) -> Result<()> {
     cmd.env(format!("AR_{}", env_target), &ar_path);
     cmd.env("CC", &cc_path);
     cmd.env("AR", &ar_path);
-    cmd.env(format!("CARGO_TARGET_{}_LINKER", env_target.to_uppercase()), &cc_path);
+    cmd.env(
+        format!("CARGO_TARGET_{}_LINKER", env_target.to_uppercase()),
+        &cc_path,
+    );
     let status = cmd.status()?;
     if !status.success() {
         anyhow::bail!("Compilation failed for {}", arch.target());
@@ -270,9 +289,13 @@ fn compile_core(root: &Path, release: bool, arch: Arch) -> Result<()> {
 
 fn get_version(root: &Path) -> Result<String> {
     if let Ok(v) = env::var("META_HYBRID_VERSION") {
-        if !v.is_empty() { return Ok(v); }
+        if !v.is_empty() {
+            return Ok(v);
+        }
     }
-    let output = Command::new("git").args(["describe", "--tags", "--always", "--dirty"]).output();
+    let output = Command::new("git")
+        .args(["describe", "--tags", "--always", "--dirty"])
+        .output();
     if let Ok(o) = output {
         if o.status.success() {
             return Ok(String::from_utf8(o.stdout)?.trim().to_string());
@@ -293,7 +316,9 @@ fn get_version(root: &Path) -> Result<String> {
 }
 
 fn update_module_prop(path: &Path, version: &str) -> Result<()> {
-    if !path.exists() { return Ok(()); }
+    if !path.exists() {
+        return Ok(());
+    }
     let content = fs::read_to_string(path)?;
     let mut new_lines = Vec::new();
     let code = if let Ok(env_code) = env::var("META_HYBRID_CODE") {

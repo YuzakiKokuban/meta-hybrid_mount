@@ -30,6 +30,8 @@ pub struct RuntimeState {
     pub storage_percent: u8,
     #[serde(default)]
     pub hymofs_available: bool,
+    #[serde(default)]
+    pub zygisksu_enforce: bool,
 }
 
 impl RuntimeState {
@@ -51,6 +53,7 @@ impl RuntimeState {
             .unwrap_or_default()
             .as_secs();
         let pid = std::process::id();
+        let zygisksu_enforce = crate::utils::check_zygisksu_enforce_status();
         Self {
             timestamp,
             pid,
@@ -65,6 +68,7 @@ impl RuntimeState {
             storage_used: storage_info.1,
             storage_percent: storage_info.2,
             hymofs_available,
+            zygisksu_enforce,
         }
     }
     pub fn save(&self) -> Result<()> {
