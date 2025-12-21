@@ -83,42 +83,6 @@ impl ModuleInfo {
     }
 }
 
-pub struct ModuleFile {
-    pub relative_path: PathBuf,
-    pub real_path: PathBuf,
-    pub file_type: fs::FileType,
-    pub is_whiteout: bool,
-    pub is_replace: bool,
-    pub is_replace_file: bool,
-}
-
-impl ModuleFile {
-    pub fn new(root: &Path, relative: &Path) -> Result<Self> {
-        let real_path = root.join(relative);
-        let metadata = fs::symlink_metadata(&real_path)?;
-        let file_type = metadata.file_type();
-
-        let is_whiteout = file_type.is_char_device() && metadata.rdev() == 0;
-
-        let is_replace = file_type.is_dir() && real_path.join(defs::REPLACE_DIR_FILE_NAME).exists();
-
-        let is_replace_file = real_path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .map(|s| s == defs::REPLACE_DIR_FILE_NAME)
-            .unwrap_or(false);
-
-        Ok(Self {
-            relative_path: relative.to_path_buf(),
-            real_path,
-            file_type,
-            is_whiteout,
-            is_replace,
-            is_replace_file,
-        })
-    }
-}
-
 pub fn print_list(config: &Config) -> Result<()> {
     let modules = inventory::scan(&config.moduledir, config)?;
     let state = RuntimeState::load().unwrap_or_default();
