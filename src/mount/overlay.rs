@@ -333,14 +333,14 @@ fn mount_overlay_child(
             stock_fd.as_fd(),
             "",
             CWD,
-            mount_point.as_ref(),
+            mount_point,
             MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH,
         )
         .with_context(|| format!("move_mount failed to {}", mount_point))?;
 
         #[cfg(any(target_os = "linux", target_os = "android"))]
         if !disable_umount {
-            let _ = send_unmountable(mount_point.as_ref());
+            let _ = send_unmountable(mount_point);
         }
         return Ok(());
     }
@@ -378,14 +378,14 @@ fn mount_overlay_child(
             stock_fd.as_fd(),
             "",
             CWD,
-            mount_point.as_ref(),
+            mount_point,
             MoveMountFlags::MOVE_MOUNT_F_EMPTY_PATH,
         )
         .with_context(|| format!("move_mount failed to {}", mount_point))?;
 
         #[cfg(any(target_os = "linux", target_os = "android"))]
         if !disable_umount {
-            let _ = send_unmountable(mount_point.as_ref());
+            let _ = send_unmountable(mount_point);
         }
     }
     Ok(())
