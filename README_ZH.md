@@ -21,11 +21,8 @@
 
 Meta-Hybrid 能够为每个模块智能选择最佳挂载方案：
 
-1. **HymoFS (内核级)**：最先进的挂载模式。利用自定义内核接口 (`/dev/hymo_ctl`) 直接进行路径重定向和文件隐藏。
-    * **零开销**：在内核层解决路径映射，无需传统挂载的性能损耗。
-    * **深度隐蔽**：支持隐藏 Overlay 扩展属性 (xattrs) 和特定路径，通过 `hymofs_stealth` 实现极致隐身。
-2. **OverlayFS**：高效的文件系统合并技术，提供最佳的 I/O 读写性能。
-3. **Magic Mount**：经典的挂载机制，作为高兼容性的回退方案，确保在任何环境下均可工作。
+1. **OverlayFS**：高效的文件系统合并技术，提供最佳的 I/O 读写性能。
+2. **Magic Mount**：经典的挂载机制，作为高兼容性的回退方案，确保在任何环境下均可工作。
 
 ### 🛡️ 智能诊断与安全
 
@@ -49,8 +46,6 @@ Meta-Hybrid 能够为每个模块智能选择最佳挂载方案：
 | `moduledir` | string | `/data/adb/modules/` | 模块安装目录。 |
 | `mountsource` | string | `KSU` | 挂载源类型标识。 |
 | `partitions` | list | `[]` | 指定挂载的分区（留空则自动检测）。 |
-| `hymofs_stealth` | bool | `true` | 启用 HymoFS 隐身模式（隐藏痕迹）。 |
-| `hymofs_debug` | bool | `false` | 启用 HymoFS 的详细调试日志。 |
 | `enable_nuke` | bool | `false` | 启用强力清理模式 (Nuke)。 |
 | `force_ext4` | bool | `false` | 强制为 Loop 设备使用 ext4 格式。 |
 | `disable_umount` | bool | `false` | 禁用卸载操作（用于排错）。 |
