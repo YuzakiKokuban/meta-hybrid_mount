@@ -16,7 +16,7 @@ use walkdir::WalkDir;
 use crate::{core::state::RuntimeState, defs, utils};
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
-use crate::utils::send_unmountable;
+use crate::try_umount::send_unmountable;
 
 const DEFAULT_SELINUX_CONTEXT: &str = "u:object_r:system_file:s0";
 const SELINUX_XATTR_KEY: &str = "security.selinux";
