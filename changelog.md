@@ -1,5 +1,6 @@
-## v1.9.31
+## v1.9.33
 
-Changes since v1.9.3:
-* fix(utils): enhance sync with full xattr support
-* chore(release): bump version to v1.9.3 [skip ci]
+Changes since v1.9.32:
+* Fix(granary): correct state file path for backups and refactor mount parsing logic to utils
+* Refactor: centralize module ID extraction logic into utils to eliminate code duplication
+* Refactor(storage): remove duplicated unsafe SELinux logic and reuse utils implementation
