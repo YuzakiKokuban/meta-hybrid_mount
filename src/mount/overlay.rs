@@ -229,7 +229,7 @@ pub fn mount_overlay(
 
         if let Err(e) = mount_overlay_child(
             &mount_point,
-            &relative_clean,
+            relative_clean,
             module_roots,
             &stock_root,
             #[cfg(any(target_os = "linux", target_os = "android"))]

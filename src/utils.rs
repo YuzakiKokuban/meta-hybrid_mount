@@ -4,7 +4,7 @@
 use std::ffi::CString;
 use std::fmt as std_fmt;
 use std::fs::{self, File, create_dir_all, remove_dir_all, remove_file, write};
-use std::io::{BufRead, BufReader, Write};
+use std::io::Write;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt, symlink};
 use std::path::{Path, PathBuf};
@@ -583,51 +583,4 @@ pub fn extract_module_id(path: &Path) -> Option<String> {
     path.parent()
         .and_then(|p| p.file_name())
         .map(|s| s.to_string_lossy().to_string())
-}
-
-pub fn get_sub_mounts(parent: &Path) -> Result<Vec<String>> {
-    let parent_str = parent.to_string_lossy();
-    let parent_slash = if parent_str.ends_with('/') {
-        parent_str.to_string()
-    } else {
-        format!("{}/", parent_str)
-    };
-
-    let mut sub_mounts = Vec::new();
-
-    if let Ok(process) = Process::myself()
-        && let Ok(mountinfo) = process.mountinfo()
-    {
-        for m in mountinfo {
-            let mount_point = m.mount_point.to_string_lossy();
-            if mount_point.starts_with(&parent_slash)
-                && mount_point != parent_str
-                && !mount_point.contains("hybrid_mount")
-            {
-                sub_mounts.push(mount_point.to_string());
-            }
-        }
-        sub_mounts.sort_by_key(|a| a.len());
-        return Ok(sub_mounts);
-    }
-
-    let file = File::open("/proc/mounts")?;
-    let reader = BufReader::new(file);
-
-    for line in reader.lines() {
-        let line = line?;
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() < 2 {
-            continue;
-        }
-        let mount_point = parts[1];
-        if mount_point.starts_with(&parent_slash)
-            && mount_point != parent_str
-            && !mount_point.contains("hybrid_mount")
-        {
-            sub_mounts.push(mount_point.to_string());
-        }
-    }
-    sub_mounts.sort_by_key(|a| a.len());
-    Ok(sub_mounts)
 }
