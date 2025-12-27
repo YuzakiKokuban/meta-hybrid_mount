@@ -4,9 +4,9 @@
 mod conf;
 mod core;
 mod defs;
-mod mount;
 #[cfg(any(target_os = "linux", target_os = "android"))]
-mod try_umount;
+mod ksu;
+mod mount;
 mod utils;
 
 use anyhow::{Context, Result};
@@ -93,6 +93,8 @@ fn main() -> Result<()> {
     {
         log::error!("Failed to engage Ratoon Protocol: {}", e);
     }
+
+    ksu::info::check();
 
     if utils::check_zygisksu_enforce_status() {
         if config.allow_umount_coexistence {
@@ -218,7 +220,7 @@ fn main() -> Result<()> {
     utils::ensure_dir_exists(defs::RUN_DIR)
         .with_context(|| format!("Failed to create run directory: {}", defs::RUN_DIR))?;
 
-    let mnt_base = PathBuf::from(defs::HYBRID_MNT_DIR);
+    let mnt_base = PathBuf::from(&config.hybrid_mnt_dir);
 
     let img_path = Path::new(defs::BASE_DIR).join("modules.img");
 

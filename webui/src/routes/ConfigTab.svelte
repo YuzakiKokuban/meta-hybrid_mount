@@ -176,6 +176,31 @@
         </md-outlined-text-field>
       </div>
     </div>
+
+    <div class="config-card">
+      <div class="card-header">
+        <div class="card-icon">
+          <md-icon><svg viewBox="0 0 24 24"><path d={ICONS.mount_path} /></svg></md-icon>
+        </div>
+        <div class="card-text">
+          <span class="card-title">{store.L.config?.hybrid_mnt_dir ?? 'Mount Point Path'}</span>
+          <span class="card-desc">{store.L.config?.hybrid_mnt_dir_desc ??
+            'Temporary directory for OverlayFS mounting'}</span>
+        </div>
+      </div>
+      
+      <div class="input-stack">
+        <md-outlined-text-field 
+          label={store.L.config?.hybrid_mnt_dir ?? 'Mount Point Path'} 
+          value={store.config.hybrid_mnt_dir ?? ''} 
+          oninput={(e) => handleInput('hybrid_mnt_dir', e.target.value)}
+          class="full-width-field"
+        >
+          <md-icon slot="leading-icon"><svg viewBox="0 0 24 24"><path d={ICONS.mount_path} /></svg></md-icon>
+        </md-outlined-text-field>
+      </div>
+    </div>
+
   </section>
 
   <section class="config-group">

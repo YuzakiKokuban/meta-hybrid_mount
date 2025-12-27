@@ -15,10 +15,10 @@ use rustix::{
 use serde::Serialize;
 use walkdir::WalkDir;
 
-use crate::{core::state::RuntimeState, defs, utils};
+use crate::{core::state::RuntimeState, utils};
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
-use crate::try_umount::send_unmountable;
+use crate::ksu::try_umount::send_unmountable;
 
 const DEFAULT_SELINUX_CONTEXT: &str = "u:object_r:system_file:s0";
 
@@ -259,11 +259,13 @@ pub fn finalize_storage_permissions(target: &Path) {
 
 pub fn print_status() -> Result<()> {
     let state = RuntimeState::load().ok();
-
+    let fallback_mnt = crate::conf::config::Config::load_default()
+        .map(|c| c.hybrid_mnt_dir)
+        .unwrap_or_else(|_| crate::defs::DEFAULT_HYBRID_MNT_DIR.to_string());
     let (mnt_base, expected_mode) = if let Some(ref s) = state {
         (s.mount_point.clone(), s.storage_mode.clone())
     } else {
-        (PathBuf::from(defs::HYBRID_MNT_DIR), "unknown".to_string())
+        (PathBuf::from(fallback_mnt), "unknown".to_string())
     };
 
     let mut mode = "unknown".to_string();

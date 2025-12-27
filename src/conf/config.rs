@@ -11,6 +11,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 pub const CONFIG_FILE_DEFAULT: &str = "/data/adb/meta-hybrid/config.toml";
+use crate::defs::DEFAULT_HYBRID_MNT_DIR;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct WinnowingTable {
@@ -93,6 +94,12 @@ pub struct Config {
     pub winnowing: WinnowingTable,
     #[serde(default)]
     pub granary: GranaryConfig,
+    #[serde(default = "default_hybrid_mnt_dir")]
+    pub hybrid_mnt_dir: String,
+}
+
+fn default_hybrid_mnt_dir() -> String {
+    DEFAULT_HYBRID_MNT_DIR.to_string()
 }
 
 fn default_moduledir() -> PathBuf {
@@ -138,6 +145,7 @@ impl Default for Config {
             dry_run: false,
             winnowing: WinnowingTable::default(),
             granary: GranaryConfig::default(),
+            hybrid_mnt_dir: default_hybrid_mnt_dir(),
         }
     }
 }

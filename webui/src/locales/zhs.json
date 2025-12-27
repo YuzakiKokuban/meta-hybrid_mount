@@ -97,7 +97,9 @@
     "maxBackups": "最大保留数量",
     "maxBackupsDesc": "超过此数量的旧备份将被自动删除。",
     "retentionDays": "保留天数",
-    "retentionDaysDesc": "自动删除 N 天前的旧备份 (0 表示不限制)。"
+    "retentionDaysDesc": "自动删除 N 天前的旧备份 (0 表示不限制)。",
+    "hybrid_mnt_dir": "挂载点路径",
+    "hybrid_mnt_dir_desc": "指定用于挂载的临时目录路径，确保该路径存在且为空目录。"
   },
   "modules": {
     "title": "模块模式",
