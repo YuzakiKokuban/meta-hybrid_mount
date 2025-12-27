@@ -1,7 +1,7 @@
 // Copyright 2025 Meta-Hybrid Mount Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pub const HYBRID_MNT_DIR: &str = "/dev/meta_hybrid_mnt/";
+pub const HYBRID_MNT_DIR: &str = "/mnt/meta-hybrid/meta_hybrid_mnt/";
 
 pub const BASE_DIR: &str = "/data/adb/meta-hybrid/";
 
