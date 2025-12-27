@@ -32,7 +32,6 @@ fn info() -> Option<GetInfoCmd> {
     };
 
     let fd = *DRIVER_FD.get_or_init(grab_fd());
-
     let ret = unsafe { libc::ioctl(fd as libc::c_int, KSU_IOCTL_GET_INFO, &mut cmd) };
 
     if ret < 0 { None } else { Some(cmd) }
@@ -53,4 +52,3 @@ pub fn check() {
         panic!();
     }
 }
-
