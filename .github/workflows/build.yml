@@ -94,7 +94,7 @@ jobs:
           rm output/*.zip
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: Meta-Hybrid-CI-${{ env.META_HYBRID_VERSION }}
           path: output/artifact_content/
