@@ -20,7 +20,7 @@ const KSU_IOCTL_NUKE_EXT4_SYSFS: u32 = 0x40004b11;
 
 const KSU_IOCTL_ADD_TRY_UMOUNT: u32 = 0x40004b12;
 
-static DRIVER_FD: OnceLock<RawFd> = OnceLock::new();
+pub static DRIVER_FD: OnceLock<RawFd> = OnceLock::new();
 
 static SENT_UNMOUNTS: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
 

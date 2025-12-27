@@ -1,6 +1,7 @@
 // Copyright 2025 Meta-Hybrid Mount Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+mod checker;
 mod conf;
 mod core;
 mod defs;
@@ -93,6 +94,8 @@ fn main() -> Result<()> {
     {
         log::error!("Failed to engage Ratoon Protocol: {}", e);
     }
+
+    checker::check();
 
     if utils::check_zygisksu_enforce_status() {
         if config.allow_umount_coexistence {
