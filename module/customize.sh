@@ -1,7 +1,3 @@
-SKIPUNZIP=1
-if [ -z $KSU ]; then
-  abort "only support KernelSU!!"
-fi
 ui_print "- Extracting module files..."
 unzip -o "$ZIPFILE" -d "$MODPATH" >&2
 case "$ARCH" in
