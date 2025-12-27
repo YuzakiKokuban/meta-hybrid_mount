@@ -1,7 +1,3 @@
-SKIPUNZIP=1
-if [ -z $KSU ]; then
-  abort "only support KernelSU!!"
-fi
 ui_print "- Extracting module files..."
 unzip -o "$ZIPFILE" -d "$MODPATH" >&2
 case "$ARCH" in
@@ -40,7 +36,8 @@ IMG_FILE="$BASE_DIR/modules.img"
 if [ -f "$IMG_FILE" ]; then
     ui_print "- Existing modules.img found, keeping it."
 fi
-
+touch /data/adb/.litemode_enable
+chmod 600 /data/adb/.litemode_enable
 set_perm_recursive "$MODPATH" 0 0 0755 0644
 set_perm "$BIN_TARGET" 0 0 0755
 set_perm "$MODPATH/tools/mkfs.erofs" 0 0 0755
