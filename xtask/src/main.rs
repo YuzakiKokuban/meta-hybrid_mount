@@ -3,7 +3,10 @@
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
-use fs_extra::dir::{self, CopyOptions};
+use fs_extra::{
+    dir::{self},
+    file::{self},
+};
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -174,14 +177,18 @@ fn build_full(
         let stage_bin_dir = stage_dir.join("binaries").join(arch.android_abi());
         fs::create_dir_all(&stage_bin_dir)?;
         if src_bin.exists() {
-            fs::copy(&src_bin, stage_bin_dir.join(bin_name))?;
+            file::copy(
+                &src_bin,
+                stage_bin_dir.join(bin_name),
+                &file::CopyOptions::new().overwrite(true),
+            )?;
         } else {
             println!("Warning: Binary not found at {}", src_bin.display());
         }
     }
     println!(":: Copying module scripts...");
     let module_src = root.join("module");
-    let options = CopyOptions::new().overwrite(true).content_only(true);
+    let options = dir::CopyOptions::new().overwrite(true).content_only(true);
     dir::copy(&module_src, &stage_dir, &options)?;
     let gitignore = stage_dir.join(".gitignore");
     if gitignore.exists() {
