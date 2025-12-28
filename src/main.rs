@@ -1,12 +1,13 @@
 // Copyright 2025 Meta-Hybrid Mount Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+mod checker;
 mod conf;
 mod core;
 mod defs;
-#[cfg(any(target_os = "linux", target_os = "android"))]
-mod ksu;
 mod mount;
+#[cfg(any(target_os = "linux", target_os = "android"))]
+mod try_umount;
 mod utils;
 
 use anyhow::{Context, Result};
@@ -94,7 +95,7 @@ fn main() -> Result<()> {
         log::error!("Failed to engage Ratoon Protocol: {}", e);
     }
 
-    ksu::info::check();
+    checker::check();
 
     if utils::check_zygisksu_enforce_status() {
         if config.allow_umount_coexistence {

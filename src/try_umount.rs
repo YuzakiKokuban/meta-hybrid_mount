@@ -4,6 +4,7 @@
 use std::{
     collections::HashSet,
     ffi::CString,
+    os::fd::RawFd,
     path::Path,
     sync::{Mutex, OnceLock},
 };
@@ -11,10 +12,15 @@ use std::{
 use anyhow::{Context, Result, bail};
 use nix::ioctl_write_ptr_bad;
 
-use crate::ksu::{
-    get_fd,
-    magic::{KSU_IOCTL_ADD_TRY_UMOUNT, KSU_IOCTL_NUKE_EXT4_SYSFS},
-};
+const KSU_INSTALL_MAGIC1: u32 = 0xDEADBEEF;
+
+const KSU_INSTALL_MAGIC2: u32 = 0xCAFEBABE;
+
+const KSU_IOCTL_NUKE_EXT4_SYSFS: u32 = 0x40004b11;
+
+const KSU_IOCTL_ADD_TRY_UMOUNT: u32 = 0x40004b12;
+
+pub static DRIVER_FD: OnceLock<RawFd> = OnceLock::new();
 
 static SENT_UNMOUNTS: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
 
@@ -42,11 +48,28 @@ ioctl_write_ptr_bad!(
     NukeExt4SysfsCmd
 );
 
+fn grab_fd() -> i32 {
+    let mut fd = -1;
+
+    unsafe {
+        libc::syscall(
+            libc::SYS_reboot,
+            KSU_INSTALL_MAGIC1,
+            KSU_INSTALL_MAGIC2,
+            0,
+            &mut fd,
+        );
+    };
+
+    fd
+}
+
 pub fn send_unmountable<P>(target: P) -> Result<()>
 where
     P: AsRef<Path>,
 {
     let path_ref = target.as_ref();
+
     let path_str = path_ref.to_string_lossy().to_string();
 
     if path_str.is_empty() {
@@ -54,6 +77,7 @@ where
     }
 
     let cache = SENT_UNMOUNTS.get_or_init(|| Mutex::new(HashSet::new()));
+
     let mut set = cache.lock().unwrap();
 
     if set.contains(&path_str) {
@@ -72,7 +96,7 @@ where
         mode: 1,
     };
 
-    let fd = get_fd();
+    let fd = *DRIVER_FD.get_or_init(grab_fd);
 
     if fd < 0 {
         return Ok(());
@@ -92,7 +116,7 @@ pub fn ksu_nuke_sysfs(target: &str) -> Result<()> {
         arg: c_path.as_ptr() as u64,
     };
 
-    let fd = get_fd();
+    let fd = *DRIVER_FD.get_or_init(grab_fd);
 
     if fd < 0 {
         bail!("KSU driver not available");
