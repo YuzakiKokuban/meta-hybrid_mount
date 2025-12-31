@@ -1,16 +1,17 @@
 // Copyright 2025 Meta-Hybrid Mount Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+};
+
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use fs_extra::{
     dir::{self},
     file::{self},
-};
-use std::{
-    env, fs,
-    path::{Path, PathBuf},
-    process::{Command, Stdio},
 };
 use tempfile::NamedTempFile;
 use zip::{write::FileOptions, CompressionMethod};
@@ -414,8 +415,10 @@ fn update_module_prop(path: &Path, version: &str) -> Result<()> {
     let code = if let Ok(env_code) = env::var("META_HYBRID_CODE") {
         env_code
     } else {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use std::{
+            collections::hash_map::DefaultHasher,
+            hash::{Hash, Hasher},
+        };
         let mut hasher = DefaultHasher::new();
         version.hash(&mut hasher);
         ((hasher.finish() % 100000) as u32).to_string()
