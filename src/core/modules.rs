@@ -10,10 +10,9 @@ use std::{
 };
 
 use anyhow::Result;
-use serde::Serialize;
-
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use extattr::lgetxattr;
+use serde::Serialize;
 
 use crate::{
     conf::config::Config,

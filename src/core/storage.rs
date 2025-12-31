@@ -15,10 +15,9 @@ use rustix::{
 use serde::Serialize;
 use walkdir::WalkDir;
 
-use crate::{core::state::RuntimeState, utils};
-
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use crate::try_umount::send_unmountable;
+use crate::{core::state::RuntimeState, utils};
 
 const DEFAULT_SELINUX_CONTEXT: &str = "u:object_r:system_file:s0";
 

@@ -1,34 +1,41 @@
 // Copyright 2025 Meta-Hybrid Mount Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::ffi::CString;
-use std::fmt as std_fmt;
-use std::fs::{self, File, create_dir_all, remove_dir_all, remove_file, write};
-use std::io::Write;
-use std::os::unix::ffi::OsStrExt;
-use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt, symlink};
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::sync::OnceLock;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    ffi::CString,
+    fmt as std_fmt,
+    fs::{self, File, create_dir_all, remove_dir_all, remove_file, write},
+    io::Write,
+    os::unix::{
+        ffi::OsStrExt,
+        fs::{FileTypeExt, MetadataExt, PermissionsExt, symlink},
+    },
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+    sync::OnceLock,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use anyhow::{Context, Result, bail};
-use procfs::process::Process;
-use regex_lite::Regex;
-use rustix::fs::ioctl_ficlone;
-use rustix::mount::{MountFlags, mount};
-use tracing::{Event, Subscriber};
-use tracing_appender::non_blocking::WorkerGuard;
-use tracing_subscriber::EnvFilter;
-use tracing_subscriber::fmt::{self, FmtContext, FormatEvent, FormatFields};
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::registry::LookupSpan;
-use tracing_subscriber::util::SubscriberInitExt;
-
-use crate::defs::{self, TMPFS_CANDIDATES};
-
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use extattr::{Flags as XattrFlags, lgetxattr, llistxattr, lsetxattr};
+use procfs::process::Process;
+use regex_lite::Regex;
+use rustix::{
+    fs::ioctl_ficlone,
+    mount::{MountFlags, mount},
+};
+use tracing::{Event, Subscriber};
+use tracing_appender::non_blocking::WorkerGuard;
+use tracing_subscriber::{
+    EnvFilter,
+    fmt::{self, FmtContext, FormatEvent, FormatFields},
+    layer::SubscriberExt,
+    registry::LookupSpan,
+    util::SubscriberInitExt,
+};
+
+use crate::defs::{self, TMPFS_CANDIDATES};
 
 const SELINUX_XATTR: &str = "security.selinux";
 const OVERLAY_OPAQUE_XATTR: &str = "trusted.overlay.opaque";
@@ -233,8 +240,10 @@ pub fn camouflage_process(name: &str) -> Result<()> {
 }
 
 pub fn random_kworker_name() -> String {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
+    use std::{
+        collections::hash_map::DefaultHasher,
+        hash::{Hash, Hasher},
+    };
 
     let mut hasher = DefaultHasher::new();
     SystemTime::now()

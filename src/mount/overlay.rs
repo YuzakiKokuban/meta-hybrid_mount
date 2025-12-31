@@ -1,18 +1,17 @@
 // Copyright 2025 Meta-Hybrid Mount Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use anyhow::{Context, Result, bail};
-use log::{info, warn};
 use std::{
     ffi::CString,
     path::{Path, PathBuf},
 };
 
+use anyhow::{Context, Result, bail};
+use log::{info, warn};
 use procfs::process::Process;
 use rustix::{fd::AsFd, fs::CWD, mount::*};
 
 use crate::defs::KSU_OVERLAY_SOURCE;
-
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use crate::try_umount::send_unmountable;
 

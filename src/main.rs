@@ -9,17 +9,17 @@ mod mount;
 mod try_umount;
 mod utils;
 
-use anyhow::{Context, Result};
-use clap::Parser;
-use mimalloc::MiMalloc;
+use core::{OryzaEngine, executor, granary, inventory, planner, winnow};
 use std::path::{Path, PathBuf};
 
+use anyhow::{Context, Result};
+use clap::Parser;
 use conf::{
     cli::{Cli, Commands},
     cli_handlers,
     config::{CONFIG_FILE_DEFAULT, Config},
 };
-use core::{OryzaEngine, executor, granary, inventory, planner, winnow};
+use mimalloc::MiMalloc;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -98,7 +98,8 @@ fn main() -> Result<()> {
         if config.allow_umount_coexistence {
             if config.verbose {
                 println!(
-                    ">> ZygiskSU Enforce!=0 detected, but Umount Coexistence enabled. Respecting user config."
+                    ">> ZygiskSU Enforce!=0 detected, but Umount Coexistence enabled. Respecting \
+                     user config."
                 );
             }
         } else {
