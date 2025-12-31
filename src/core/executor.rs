@@ -4,7 +4,6 @@
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
-    process::Command,
 };
 
 use anyhow::Result;
@@ -46,55 +45,6 @@ struct OverlayResult {
     magic_roots: Vec<PathBuf>,
     fallback_ids: Vec<String>,
     success_records: Vec<(PathBuf, String)>,
-}
-
-fn repair_rw_contexts() {
-    let rw_root = Path::new(defs::SYSTEM_RW_DIR);
-
-    if !rw_root.exists() {
-        return;
-    }
-
-    log::info!(">> Applying SELinux contexts for RW partition structures...");
-
-    for part in defs::BUILTIN_PARTITIONS {
-        let part_dir = rw_root.join(part);
-
-        let reference_path = Path::new("/").join(part);
-
-        if part_dir.exists() && reference_path.exists() {
-            let status = Command::new("chcon")
-                .arg("-R")
-                .arg("--reference")
-                .arg(&reference_path)
-                .arg(&part_dir)
-                .status();
-
-            match status {
-                Ok(s) if s.success() => {
-                    log::debug!(
-                        "Fixed context for {} using reference {}",
-                        part_dir.display(),
-                        reference_path.display()
-                    );
-                }
-                _ => {
-                    let context = "u:object_r:system_file:s0";
-
-                    log::warn!(
-                        "chcon --reference failed, trying explicit context {}",
-                        context
-                    );
-
-                    let _ = Command::new("chcon")
-                        .arg("-R")
-                        .arg(context)
-                        .arg(&part_dir)
-                        .status();
-                }
-            }
-        }
-    }
 }
 
 pub fn diagnose_plan(plan: &MountPlan) -> Vec<DiagnosticIssue> {
@@ -161,8 +111,6 @@ pub fn execute(plan: &MountPlan, config: &config::Config) -> Result<ExecutionRes
     plan.overlay_module_ids.iter().for_each(|id| {
         final_overlay_ids.insert(id.clone());
     });
-
-    repair_rw_contexts();
 
     log::info!(">> Phase 1: OverlayFS Execution...");
 
