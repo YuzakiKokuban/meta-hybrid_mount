@@ -67,11 +67,7 @@ impl ModuleScanner {
                 }
 
                 modules.insert(ModuleInfo {
-                    id: p
-                        .file_name()
-                        .to_str()
-                        .unwrap_or_else(|| "unknown")
-                        .to_string(),
+                    id: p.file_name().to_str().unwrap_or("unknown").to_string(),
                     magic_mount: path.join(".magic_mount").exists(),
                     overlayfs: path.join(".overlayfs").exists(),
                 });

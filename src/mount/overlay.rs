@@ -180,7 +180,7 @@ fn mount_overlay_child(
 
 pub fn mount_partition(
     partition_name: &str,
-    lowerdir: &Vec<String>,
+    lowerdir: &[String],
     #[cfg(any(target_os = "linux", target_os = "android"))] disable_umount: bool,
 ) -> Result<()> {
     if lowerdir.is_empty() {
