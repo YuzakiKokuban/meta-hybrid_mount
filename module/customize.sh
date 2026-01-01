@@ -39,6 +39,13 @@ fi
 if [ -z "$KSU" ]; then
   touch /data/adb/.litemode_enable
   chmod 600 /data/adb/.litemode_enable
+  rm -rf "$MODPATH/metainstall.sh"
+  rm -rf "$MODPATH/metamount.sh"
+  rm -rf "$MODPATH/metauninstall.sh"
+fi
+if [ -n "$KSU" ]; then
+  rm -rf "$MODPATH/service.sh"
+  rm -rf "$MODPATH/post-fs-data.sh"
 fi
 set_perm_recursive "$MODPATH" 0 0 0755 0644
 set_perm "$BIN_TARGET" 0 0 0755
