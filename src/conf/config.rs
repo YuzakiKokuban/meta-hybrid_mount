@@ -13,64 +13,6 @@ use serde::{Deserialize, Serialize};
 pub const CONFIG_FILE_DEFAULT: &str = "/data/adb/meta-hybrid/config.toml";
 use crate::defs::DEFAULT_HYBRID_MNT_DIR;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct WinnowingTable {
-    #[serde(flatten)]
-    pub rules: HashMap<String, String>,
-}
-
-impl WinnowingTable {
-    pub fn get_preferred_module(&self, file_path: &Path) -> Option<String> {
-        let path_str = file_path.to_string_lossy().to_string();
-
-        self.rules.get(&path_str).cloned()
-    }
-
-    pub fn set_rule(&mut self, file_path: &str, module_id: &str) {
-        self.rules
-            .insert(file_path.to_string(), module_id.to_string());
-    }
-
-    #[allow(dead_code)]
-    pub fn remove_rule(&mut self, file_path: &str) {
-        self.rules.remove(file_path);
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct GranaryConfig {
-    #[serde(default = "default_max_backups")]
-    pub max_backups: usize,
-    #[serde(default = "default_retention_days")]
-    pub retention_days: u64,
-}
-
-fn default_max_backups() -> usize {
-    20
-}
-
-fn default_retention_days() -> u64 {
-    0
-}
-
-impl Default for GranaryConfig {
-    fn default() -> Self {
-        Self {
-            max_backups: default_max_backups(),
-            retention_days: default_retention_days(),
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
-#[serde(rename_all = "lowercase")]
-pub enum OverlayMode {
-    #[default]
-    Tmpfs,
-    Ext4,
-    Erofs,
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     #[serde(default = "default_moduledir")]
@@ -81,8 +23,6 @@ pub struct Config {
     #[serde(default, deserialize_with = "deserialize_partitions_flexible")]
     pub partitions: Vec<String>,
     #[serde(default)]
-    pub overlay_mode: OverlayMode,
-    #[serde(default)]
     pub enable_nuke: bool,
     #[serde(default)]
     pub disable_umount: bool,
@@ -90,10 +30,6 @@ pub struct Config {
     pub allow_umount_coexistence: bool,
     #[serde(default)]
     pub dry_run: bool,
-    #[serde(default)]
-    pub winnowing: WinnowingTable,
-    #[serde(default)]
-    pub granary: GranaryConfig,
     #[serde(default = "default_hybrid_mnt_dir")]
     pub hybrid_mnt_dir: String,
 }
@@ -138,20 +74,20 @@ impl Default for Config {
             mountsource: default_mountsource(),
             verbose: false,
             partitions: Vec::new(),
-            overlay_mode: OverlayMode::default(),
             enable_nuke: false,
             disable_umount: false,
             allow_umount_coexistence: false,
             dry_run: false,
-            winnowing: WinnowingTable::default(),
-            granary: GranaryConfig::default(),
             hybrid_mnt_dir: default_hybrid_mnt_dir(),
         }
     }
 }
 
 impl Config {
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+    pub fn from_file<P>(path: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
         let content = fs::read_to_string(path.as_ref()).context("failed to read config file")?;
 
         let config: Config = toml::from_str(&content).context("failed to parse config file")?;

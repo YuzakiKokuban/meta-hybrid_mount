@@ -1,6 +1,3 @@
-// Copyright 2025 Meta-Hybrid Mount Authors
-// SPDX-License-Identifier: GPL-3.0-or-later
-
 use std::{
     collections::{HashMap, hash_map::Entry},
     fmt,
@@ -13,7 +10,7 @@ use anyhow::Result;
 use extattr::lgetxattr;
 use rustix::path::Arg;
 
-use crate::defs::{REPLACE_DIR_FILE_NAME, REPLACE_DIR_XATTR};
+use crate::defs::{MAGIC_MOUNT, OVERLAYFS, REPLACE_DIR_FILE_NAME, REPLACE_DIR_XATTR};
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum NodeFileType {
@@ -37,7 +34,7 @@ impl From<FileType> for NodeFileType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Node {
     pub name: String,
     pub file_type: NodeFileType,
@@ -46,14 +43,104 @@ pub struct Node {
     pub module_path: Option<PathBuf>,
     pub replace: bool,
     pub skip: bool,
+    pub overlayfs: bool,
+    pub magic_mount: bool,
 }
 
-impl fmt::Display for Node {
+impl fmt::Display for NodeFileType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "u need to send '/data/adb/magic_mount/tree' to developer "
-        )
+        match self {
+            Self::Directory => write!(f, "DIR"),
+            Self::RegularFile => write!(f, "FILE"),
+            Self::Symlink => write!(f, "LINK"),
+            Self::Whiteout => write!(f, "WHT"),
+        }
+    }
+}
+
+impl fmt::Debug for Node {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn print_tree(
+            node: &Node,
+            f: &mut fmt::Formatter<'_>,
+            prefix: &str,
+            is_last: bool,
+            is_root: bool,
+        ) -> fmt::Result {
+            let connector = if is_root {
+                ""
+            } else if is_last {
+                "└── "
+            } else {
+                "├── "
+            };
+
+            let name = if node.name.is_empty() {
+                "/"
+            } else {
+                &node.name
+            };
+
+            let mut flags = Vec::new();
+
+            if node.replace {
+                flags.push("REPLACE");
+            }
+
+            if node.skip {
+                flags.push("SKIP");
+            }
+
+            if node.magic_mount {
+                flags.push("MAGIC_MOUNT");
+            }
+
+            if node.overlayfs {
+                flags.push("OVERLAYFS");
+            }
+
+            let flag_str = if flags.is_empty() {
+                String::new()
+            } else {
+                format!(" [{}]", flags.join("|"))
+            };
+
+            let source_str = if let Some(p) = &node.module_path {
+                format!(" -> {}", p.display())
+            } else {
+                String::new()
+            };
+
+            writeln!(
+                f,
+                "{}{}{} [{}]{}{}",
+                prefix, connector, name, node.file_type, flag_str, source_str
+            )?;
+
+            let child_prefix = if is_root {
+                ""
+            } else if is_last {
+                "    "
+            } else {
+                "│   "
+            };
+
+            let new_prefix = format!("{}{}", prefix, child_prefix);
+
+            let mut children: Vec<_> = node.children.values().collect();
+
+            children.sort_by(|a, b| a.name.cmp(&b.name));
+
+            for (i, child) in children.iter().enumerate() {
+                let is_last_child = i == children.len() - 1;
+
+                print_tree(child, f, &new_prefix, is_last_child, false)?;
+            }
+
+            Ok(())
+        }
+
+        print_tree(self, f, "", true, true)
     }
 }
 
@@ -108,6 +195,8 @@ impl Node {
             module_path: None,
             replace: false,
             skip: false,
+            overlayfs: false,
+            magic_mount: false,
         }
     }
 
@@ -127,13 +216,16 @@ impl Node {
                 if replace {
                     log::debug!("{} need replace", path.display());
                 }
+
                 return Some(Self {
                     name: name.to_string(),
                     file_type,
                     children: HashMap::default(),
-                    module_path: Some(path),
+                    module_path: Some(path.clone()),
                     replace,
                     skip: false,
+                    overlayfs: path.join(OVERLAYFS).exists(),
+                    magic_mount: path.join(MAGIC_MOUNT).exists(),
                 });
             }
         }
