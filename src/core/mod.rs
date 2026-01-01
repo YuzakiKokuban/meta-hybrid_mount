@@ -41,7 +41,7 @@ pub fn mount(config: Config) -> Result<()> {
         }
     }
 
-    thread::Builder::new()
+    let overlayfs = thread::Builder::new()
         .name("Moount-Overlayfs".to_string())
         .spawn(move || {
             let mut system_lowerdir: Vec<String> = Vec::new();
@@ -82,5 +82,7 @@ pub fn mount(config: Config) -> Result<()> {
                 }
             }
         })?;
+
+    overlayfs.join().unwrap();
     Ok(())
 }
