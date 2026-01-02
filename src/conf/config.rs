@@ -11,7 +11,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 pub const CONFIG_FILE_DEFAULT: &str = "/data/adb/meta-hybrid/config.toml";
-use crate::{core::img::ImgMode, defs::DEFAULT_HYBRID_MNT_DIR};
+use crate::{ defs::DEFAULT_HYBRID_MNT_DIR};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
@@ -28,7 +28,6 @@ pub struct Config {
     pub disable_umount: bool,
     #[serde(default)]
     pub allow_umount_coexistence: bool,
-    pub overlay_mode: ImgMode,
     #[serde(default)]
     pub dry_run: bool,
     #[serde(default = "default_hybrid_mnt_dir")]
@@ -77,7 +76,6 @@ impl Default for Config {
             partitions: Vec::new(),
             enable_nuke: false,
             disable_umount: false,
-            overlay_mode: ImgMode::Tmpfs,
             allow_umount_coexistence: false,
             dry_run: false,
             hybrid_mnt_dir: default_hybrid_mnt_dir(),

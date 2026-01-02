@@ -50,9 +50,9 @@ pub fn mount(config: Config) -> Result<()> {
     let overlayfs = thread::Builder::new()
         .name("Moount-Overlayfs".to_string())
         .spawn(move || {
-            img::Img::new(Path::new(BASE_DIR).join("modules.img"))
-                .create()
-                .unwrap();
+            /*img::Img::new(Path::new(BASE_DIR).join("modules.img"))
+            .create()
+            .unwrap();*/
             let mut system_lowerdir: Vec<String> = Vec::new();
             let mut partition_lowerdir: HashMap<String, Vec<String>> = HashMap::new();
             let mut config = CONFIG.read().unwrap();

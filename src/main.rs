@@ -17,6 +17,8 @@ use clap::Parser;
 use conf::config::{CONFIG_FILE_DEFAULT, Config};
 use mimalloc::MiMalloc;
 
+use crate::core::img::copy_sparse_file;
+
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
@@ -44,14 +46,15 @@ fn load_config() -> Result<Config> {
 
 fn main() -> Result<()> {
     let mut config = load_config()?;
-    /*
-    config.merge_with_cli(
-        cli.moduledir.clone(),
-        cli.mountsource.clone(),
-        cli.verbose,
-        cli.partitions.clone(),
-        cli.dry_run,
-    );*/
+
+    let args: Vec<_> = std::env::args().collect();
+
+    if args.len() > 1 {
+        match args[1].as_str() {
+            "xcp" => copy_sparse_file(args[2].clone(), args[3].clone(), false)?,
+            _ => {}
+        }
+    }
 
     if utils::check_zygisksu_enforce_status() {
         if config.allow_umount_coexistence {

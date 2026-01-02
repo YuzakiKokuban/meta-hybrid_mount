@@ -32,9 +32,26 @@ if [ ! -f "$BASE_DIR/config.toml" ]; then
   cat "$MODPATH/config.toml" >"$BASE_DIR/config.toml"
 fi
 
-IMG_FILE="$BASE_DIR/modules.img"
+IMG_FILE="$MODPATH/modules.img"
+IMG_SIZE_MB=2048
+EXISTING_IMG="/data/adb/modules/$MODID/modules.img"
+
 if [ -f "$IMG_FILE" ]; then
   ui_print "- Existing modules.img found, keeping it."
+  ui_print "- Reusing modules image from previous install"
+  "$MODPATH/meta-hybrid" xcp "$EXISTING_IMG" "$IMG_FILE" ||
+    abort "! Failed to copy existing modules image"
+
+else
+  ui_print "- Creating 2GB ext4 image for module storage"
+
+  # Create sparse file (2GB logical size, 0 bytes actual)
+  truncate -s ${IMG_SIZE_MB}M "$IMG_FILE" ||
+    abort "! Failed to create image file"
+
+  # Remove journal to prevent creating jbd2 sysfs node
+  /system/bin/mke2fs -t ext4 -O ^has_journal -F "$IMG_FILE" >/dev/null 2>&1 ||
+    abort "! Failed to format ext4 image"
 fi
 if [ -z "$KSU" ]; then
   touch /data/adb/.litemode_enable

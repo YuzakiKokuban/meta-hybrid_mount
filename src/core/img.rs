@@ -16,63 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{defs::SYSTEM_RW_DIR, utils::lsetfilecon};
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum ImgMode {
-    Tmpfs,
-    Ext4,
-    Erofs,
-}
-
-pub struct Img {
-    path: PathBuf,
-}
-
-impl Img {
-    pub fn new<P>(path: P) -> Self
-    where
-        P: AsRef<Path>,
-    {
-        Self {
-            path: path.as_ref().to_path_buf(),
-        }
-    }
-
-    pub fn create(&self) -> Result<()> {
-        if self.path.exists() {
-            let mounts = Process::myself()?.mountinfo()?;
-
-            let mount = mounts
-                .0
-                .iter()
-                .filter(|m| m.mount_point == PathBuf::from(SYSTEM_RW_DIR))
-                .collect::<Vec<_>>();
-            if mount.len() == 0 {
-                return Ok(());
-            }
-            lsetfilecon(SYSTEM_RW_DIR, "u:object_r:ksu_file:sp")?;
-            Command::new("mount")
-                .args([
-                    "-t",
-                    "ext4",
-                    "-o",
-                    "loop,rw,noatime",
-                    self.path.clone().as_str()?,
-                    SYSTEM_RW_DIR,
-                ])
-                .status()
-                .context("Failed to execute mount command")?;
-
-            return Ok(());
-        }
-
-        copy_sparse_file(self.path.clone(), self.path.clone(), false)?;
-
-        Ok(())
-    }
-}
-
-fn copy_sparse_file<P: AsRef<Path>, Q: AsRef<Path>>(
+pub fn copy_sparse_file<P: AsRef<Path>, Q: AsRef<Path>>(
     src: P,
     dst: Q,
     punch_hole: bool,
