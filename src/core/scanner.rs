@@ -1,21 +1,26 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
+    fs,
     path::{Path, PathBuf},
 };
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
-use crate::defs::{DISABLE_FILE_NAME, REMOVE_FILE_NAME, SKIP_MOUNT_FILE_NAME};
+use crate::defs::{DISABLE_FILE_NAME, REMOVE_FILE_NAME, SKIP_MOUNT_FILE_NAME, STATE_FILE};
 
-#[derive(PartialEq, Eq, Hash, Clone, PartialOrd)]
+#[derive(PartialEq, Eq, Hash, Serialize, Deserialize, Clone, PartialOrd)]
 pub struct ModuleInfo {
     pub magic_mount: bool,
     pub overlayfs: bool,
-    pub id: String,
+}
+
+#[derive(PartialEq, Eq, Serialize, Deserialize, Clone)]
+pub struct ModuleConfig {
+    modules: HashMap<String, ModuleInfo>,
 }
 
 pub struct ModuleScanner {
-    modules: HashSet<ModuleInfo>,
     extra: Vec<String>,
     path: PathBuf,
 }
@@ -26,15 +31,16 @@ impl ModuleScanner {
         P: AsRef<Path>,
     {
         Self {
-            modules: HashSet::new(),
             extra: extra,
             path: path.as_ref().to_path_buf(),
         }
     }
 
-    pub fn scanner(&mut self) -> Result<HashSet<ModuleInfo>> {
+    pub fn scanner(&mut self) -> Result<HashMap<String, ModuleInfo>> {
         log::info!("Starting san modules!");
-        let mut modules = HashSet::new();
+        let mut modules = HashMap::new();
+        let file = fs::read_to_string(STATE_FILE)?;
+        let json_raw: ModuleConfig = serde_json::from_str(&file)?;
 
         if let Ok(entries) = self.path.read_dir() {
             for p in entries.flatten() {
@@ -66,11 +72,19 @@ impl ModuleScanner {
                     continue;
                 }
 
-                modules.insert(ModuleInfo {
-                    id: p.file_name().to_str().unwrap_or("unknown").to_string(),
-                    magic_mount: path.join(".magic_mount").exists(),
-                    overlayfs: path.join(".overlayfs").exists(),
-                });
+                let id = p.file_name();
+                let id = id.to_str().unwrap_or("unknown");
+                if !json_raw.modules.contains_key(id) {
+                    continue;
+                }
+
+                modules.insert(
+                    id.to_string(),
+                    ModuleInfo {
+                        magic_mount: false,
+                        overlayfs: false,
+                    },
+                );
             }
         }
 

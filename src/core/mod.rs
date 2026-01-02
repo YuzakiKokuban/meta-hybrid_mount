@@ -33,15 +33,15 @@ pub fn mount(config: Config) -> Result<()> {
 
     CONFIG.set(config)?;
 
-    for file in files {
-        if file.magic_mount {
-            log::debug!("module {} will use magic_mount to mount", file.id.clone());
-            MAGIC_MOUNT_ID.lock().unwrap().insert(file.id.clone());
+    for (id, info) in files {
+        if info.magic_mount {
+            log::debug!("module {} will use magic_mount to mount", id.clone());
+            MAGIC_MOUNT_ID.lock().unwrap().insert(id.clone());
         }
 
-        if file.overlayfs {
-            log::debug!("module {} will use overlayfs to mount", file.id.clone());
-            OVERLAYFS_ID.lock().unwrap().insert(file.id.clone());
+        if info.overlayfs {
+            log::debug!("module {} will use overlayfs to mount", id.clone());
+            OVERLAYFS_ID.lock().unwrap().insert(id.clone());
         }
     }
 
