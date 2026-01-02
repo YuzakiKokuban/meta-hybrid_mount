@@ -40,7 +40,17 @@ impl ModuleScanner {
         log::info!("Starting san modules!");
         let mut modules = HashMap::new();
         let file = fs::read_to_string(STATE_FILE)?;
-        let json_raw: ModuleConfig = serde_json::from_str(&file)?;
+        let json_raw: ModuleConfig = match serde_json::from_str(&file) {
+            Ok(s) => s,
+            Err(_) => {
+                let empty = ModuleConfig {
+                    modules: HashMap::new(),
+                };
+                let json_raw = serde_json::to_string_pretty(&empty)?;
+                fs::write(STATE_FILE, &json_raw)?;
+                return Ok(HashMap::new());
+            }
+        };
 
         if let Ok(entries) = self.path.read_dir() {
             for p in entries.flatten() {
