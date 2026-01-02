@@ -1,3 +1,6 @@
+pub mod img;
+mod scanner;
+
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -10,10 +13,9 @@ use rustix::mount::{MountFlags, mount as rustix_mount};
 
 use crate::{
     conf::config::Config,
+    defs::BASE_DIR,
     mount::{magic_mount::magic_mount, overlay::mount_partition},
 };
-
-mod scanner;
 
 pub static MAGIC_MOUNT_ID: LazyLock<Mutex<HashSet<String>>> =
     LazyLock::new(|| Mutex::new(HashSet::new()));
@@ -48,6 +50,9 @@ pub fn mount(config: Config) -> Result<()> {
     let overlayfs = thread::Builder::new()
         .name("Moount-Overlayfs".to_string())
         .spawn(move || {
+            img::Img::new(Path::new(BASE_DIR).join("modules.img"))
+                .create()
+                .unwrap();
             let mut system_lowerdir: Vec<String> = Vec::new();
             let mut partition_lowerdir: HashMap<String, Vec<String>> = HashMap::new();
             let mut config = CONFIG.read().unwrap();
