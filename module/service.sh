@@ -2,9 +2,7 @@ MODDIR="${0%/*}"
 BASE_DIR="/data/adb/meta-hybrid"
 LOG_FILE="$BASE_DIR/daemon.log"
 
-if [ -n "$KSU" ]; then
-  exit 0
-fi
+
 
 mkdir -p "$BASE_DIR"
 if [ -f "$LOG_FILE" ]; then
@@ -28,7 +26,4 @@ chmod 755 "$BINARY"
 "$BINARY" >> "$LOG_FILE" 2>&1
 EXIT_CODE=$?
 log "Hybrid Mount exited with code $EXIT_CODE"
-if [ "$EXIT_CODE" = "0" ]; then
-    
-fi
 exit $EXIT_CODE
