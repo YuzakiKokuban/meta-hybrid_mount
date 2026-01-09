@@ -13,12 +13,15 @@ pub fn send_unmountable<P>(target: P) -> Result<()>
 where
     P: AsRef<Path>,
 {
-    LIST.lock().unwrap().add(target);
+    LIST.lock()
+        .map_err(|_| anyhow::anyhow!("Failed to lock unmount list"))?
+        .add(target);
     Ok(())
 }
 
 pub fn commit() -> Result<()> {
-    let mut list = LIST.lock().unwrap();
+    let mut list = LIST.lock()
+        .map_err(|_| anyhow::anyhow!("Failed to lock unmount list"))?;
     list.flags(2);
     list.umount()?;
     Ok(())
