@@ -86,7 +86,7 @@ fn process_module(
     if let Some(name) = path.file_name().and_then(|n| n.to_str())
         && let Err(e) = validate_module_id(name)
     {
-        log::warn!("Skipping invalid module {}: {}", name, e);
+        tracing::warn!("Skipping invalid module {}: {}", name, e);
         return Ok((root, system));
     }
 
@@ -253,7 +253,7 @@ impl MagicMount {
             NodeFileType::Symlink => self.handle_symlink(),
             NodeFileType::Directory => self.handle_directory(),
             NodeFileType::Whiteout => {
-                log::debug!("file {} is removed", self.path.display());
+                tracing::debug!("file {} is removed", self.path.display());
                 Ok(())
             }
         }
@@ -281,7 +281,7 @@ impl MagicMount {
             })?;
 
             if let Err(e) = mount_remount(target_path, MountFlags::RDONLY | MountFlags::BIND, "") {
-                log::warn!("make file {} ro: {e:#?}", target_path.display());
+                tracing::warn!("make file {} ro: {e:#?}", target_path.display());
             }
 
             let mounted = MOUNTED_FILES.load(std::sync::atomic::Ordering::Relaxed) + 1;
@@ -456,7 +456,7 @@ pub fn mount_partitions(
 
         let files = MOUNTED_FILES.load(std::sync::atomic::Ordering::Relaxed);
         let symlinks = MOUNTED_SYMBOLS_FILES.load(std::sync::atomic::Ordering::Relaxed);
-        log::info!(
+        tracing::info!(
             "Magic Mount: {} files, {} symlinks processed.",
             files,
             symlinks
